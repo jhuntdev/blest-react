@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react'
+import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 const BlestContext = createContext()
@@ -91,11 +91,7 @@ export const BlestProvider = ({ children, url, options = {} }) => {
     }
   }, [queue, url, options])
 
-  return (
-    <BlestContext.Provider value={{ queue, state, enqueue }}>
-      {children}
-    </BlestContext.Provider>
-  )
+  return createElement(BlestContext.Provider, { value: { queue, state, enqueue }}, children)
 
 }
 
