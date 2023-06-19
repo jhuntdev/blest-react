@@ -6,7 +6,7 @@ To learn more about BLEST, please refer to the white paper: https://jhunt.dev/BL
 
 ## Features
 
-- JSON Payloads - Reduce parsing time and overhead
+- Built on JSON - Reduce parsing time and overhead
 - Request Batching - Save bandwidth and reduce load times
 - Compact Payloads - Save more bandwidth
 - Selective Returns - Save even more bandwidth
@@ -28,25 +28,51 @@ yarn add blest-react
 
 ## Usage
 
+Wrap your app (or just part of it) with `BlestProvider`.
+
 ```javascript
-import React from 'react';
-import { useBlestRequest, useBlestCommand } from 'blest-react';
+import React from 'react'
+import { BlestProvider } from 'blest-react'
 
-// Use the useBlestRequest hook for fetching data
+const App = () => {
+  return (
+    <BlestProvider url='http://localhost:8080' options={{ headers: { Authorization: 'Bearer token' } }}>
+      {/* Your app here */}
+    </BlestProvider>
+  )
+}
+```
+
+Use the `useBlestRequest` hook to perform passive requests on mount and when parameters change.
+
+```javascript
+import { useBlestRequest } from 'blest-react'
+
 const MyComponent = () => {
-  const { data, loading, error } = useBlestRequest('listItems', { limit: 24 });
+  const { data, loading, error } = useBlestRequest('listItems', { limit: 24 }, ['data', ['pageInfo', ['endCursor', 'hasNextPage']]])
 
-  // Render your component
-  // ...
-};
+  return (
+    // Your component here
+  )
+}
+```
 
-// Use the useBlestCommand hook for sending data
+Use the `useBlestCommand` hook to generate a request function you can call when needed.
+
+```javascript
+import { useBlestCommand } from 'blest-react'
+
 const MyForm = () => {
-  const [submitMyForm, { data, loading, error }] = useBlestCommand('submitForm');
+  const [submitForm, { data, loading, error }] = useBlestCommand('submitForm')
 
-  // Render your form
-  // ...
-};
+  const handleSubmit = (values) => {
+    submitForm(values)
+  }
+
+  return (
+    // Your form here
+  )
+}
 ```
 
 ## Contributing

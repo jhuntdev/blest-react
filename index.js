@@ -10,7 +10,7 @@ export const BlestProvider = ({ children, url, options = {} }) => {
 
   const timeout = useRef()
 
-  const enqueue = useCallback((id, name, variables, options) => {
+  const enqueue = useCallback((id, route, params, selector) => {
     if (timeout.current) clearTimeout(timeout.current)
     setState((state) => {
       return {
@@ -22,11 +22,12 @@ export const BlestProvider = ({ children, url, options = {} }) => {
         }
       }
     })
-    setQueue((queue) => [...queue, [id, name, variables, options]])
+    setQueue((queue) => [...queue, [id, route, params, selector]])
   }, [])
   
   useEffect(() => {
     if (queue.length > 0) {
+      const headers = options?.headers && typeof options?.headers === 'object' ? options.headers : {}
       const myQueue = queue.map((q) => [...q])
       const requestIds = queue.map((q) => q[0])
       setQueue([])
@@ -46,12 +47,13 @@ export const BlestProvider = ({ children, url, options = {} }) => {
           return newState
         })
         fetch(url, {
-          ...options,
           body: JSON.stringify(myQueue),
           mode: 'cors',
           method: 'POST',
           headers: {
-            "Content-Type": "application/json"
+            ...headers,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
           }
         })
         .then(async (result) => {
@@ -107,7 +109,7 @@ export const useBlestContext = () => {
 
 }
 
-export const useBlestRequest = (name, variables, options) => {
+export const useBlestRequest = (route, params, selector) => {
 
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState(null)
@@ -115,29 +117,31 @@ export const useBlestRequest = (name, variables, options) => {
   const lastRequest = useRef()
 
   useEffect(() => {
-    const requestHash = name + JSON.stringify(variables || {}) + JSON.stringify(options || {})
-    if (lastRequest.current === requestHash) return;
-    lastRequest.current = requestHash
-    const id = uuidv4()
-    enqueue(id, name, variables, options)
-    setRequestId(id)
-  }, [name, variables, options, enqueue])
+    const requestHash = route + JSON.stringify(params || {}) + JSON.stringify(selector || {})
+    if (lastRequest.current !== requestHash) {
+      lastRequest.current = requestHash
+      const id = uuidv4()
+      setRequestId(id)
+      enqueue(id, route, params, selector)
+    }
+  }, [route, params, selector, enqueue])
 
   return queryState || {}
 
 }
 
-export const useBlestCommand = (name, options) => {
+export const useBlestCommand = (route, selector) => {
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState(null)
   const queryState = requestId && state[requestId]
 
-  const request = useCallback((variables) => {
-    const id = Math.round(Math.random() * 1000000).toString()
-    enqueue(id, name, variables, options)
+  const request = useCallback((params) => {
+    const id = uuidv4()
     setRequestId(id)
-  }, [name, options, enqueue, setRequestId])
+    enqueue(id, route, params, selector)
+  }, [route, selector, enqueue])
 
   return [request, queryState || {}]
+
 }
