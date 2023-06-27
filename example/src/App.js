@@ -4,7 +4,7 @@ import { BlestProvider, useBlestRequest } from 'blest-react'
 function App() {
   return (
     <BlestProvider url='http://localhost:8080'>
-      <div style={{ padding: '1rem'}}>
+      <div>
         <h1 style={{ marginTop: 0 }}>BLEST React Example</h1>
         <hr />
         <Component1 />
@@ -34,7 +34,7 @@ const Component2 = () => {
   const { data, error, loading } = useBlestRequest('greet', { name })
   return (
     <div>
-      <h3>{`["greet", {"name":"`}<input type='text' value={name} onChange={(e) => setName(e.target.value)} />{`"}]`}</h3>
+      <h3>{`["greet", {"name": "`}<input type='text' value={name} onChange={(e) => setName(e.target.value)} />{`"}]`}</h3>
       <p>{loading ? 'Loading...' : error ? 'Error: ' + error.message : JSON.stringify(data)}</p>
     </div>
   )
