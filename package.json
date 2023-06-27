@@ -2,13 +2,26 @@
   "name": "blest-react",
   "version": "0.0.3",
   "description": "A React client for BLEST (Batch-able, Lightweight, Encrypted State Transfer), an improved communication protocol for web APIs which leverages JSON, supports request batching and selective returns, and provides a modern alternative to REST.",
-  "keywords": ["blest", "api", "js", "javascript", "react", "reactjs"],
-  "main": "index.js",
+  "keywords": [
+    "blest",
+    "api",
+    "js",
+    "javascript",
+    "react",
+    "reactjs"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/jhuntdev/blest-react"
   },
+  "directories": {
+    "example": "example"
+  },
   "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "JHunt <blest@jhunt.dev>",
@@ -18,5 +31,10 @@
   },
   "dependencies": {
     "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.14",
+    "@types/uuid": "^9.0.2",
+    "typescript": "^5.1.3"
   }
 }
