@@ -7,8 +7,10 @@
     "api",
     "js",
     "javascript",
+    "typescript",
     "react",
-    "reactjs"
+    "reactjs",
+    "react-native"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
