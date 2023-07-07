@@ -18,6 +18,7 @@
     "type": "git",
     "url": "https://github.com/jhuntdev/blest-react"
   },
+  "homepage": "https://blest.jhunt.dev",
   "directories": {
     "example": "example"
   },
