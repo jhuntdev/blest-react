@@ -52,7 +52,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     })
     queue.current = [...queue.current, [id, route, parameters, selector]]
     if (!timeout.current) {
-      timeout.current = setTimeout(process, bufferDelay)
+      timeout.current = setTimeout(() => { process() }, bufferDelay)
     }
   }, [])
 
