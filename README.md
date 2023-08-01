@@ -2,7 +2,7 @@
 
 A React client for BLEST (Batch-able, Lightweight, Encrypted State Transfer), an improved communication protocol for web APIs which leverages JSON, supports request batching and selective returns, and provides a modern alternative to REST.
 
-To learn more about BLEST, please refer to the white paper: https://jhunt.dev/BLEST%20White%20Paper.pdf
+To learn more about BLEST, please visit the website: https://blest.jhunt.dev
 
 ## Features
 
@@ -36,7 +36,7 @@ import { BlestProvider } from 'blest-react'
 
 const App = () => {
   return (
-    <BlestProvider url='http://localhost:8080' options={{ headers: { Authorization: 'Bearer token' } }}>
+    <BlestProvider url='http://localhost:8080' options={{ maxBatchSize: 25, bufferDelay: 10, headers: { Authorization: 'Bearer token' } }}>
       {/* Your app here */}
     </BlestProvider>
   )

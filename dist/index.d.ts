@@ -14,12 +14,18 @@ interface BlestContextValue {
     state: BlestGlobalState;
     enqueue: any;
 }
+interface BlestProviderOptions {
+    maxBatchSize?: number;
+    bufferDelay?: number;
+    headers?: any;
+}
 export declare const BlestProvider: ({ children, url, options }: {
     children: any;
     url: string;
-    options?: any;
+    options?: BlestProviderOptions | undefined;
 }) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>>;
 export declare const useBlestContext: () => BlestContextValue;
 export declare const useBlestRequest: (route: string, parameters?: any, selector?: BlestSelector) => {};
+export declare const useBlestLazyRequest: (route: string, selector?: BlestSelector) => {}[];
 export declare const useBlestCommand: (route: string, selector?: BlestSelector) => {}[];
 export {};

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement } from 'react'
+import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 interface BlestRequestState {
@@ -16,22 +16,30 @@ type BlestSelector = Array<string | BlestSelector>
 type BlestQueueItem = [string, string, any?, BlestSelector?]
 
 interface BlestContextValue {
-  queue: BlestQueueItem[],
+  queue: MutableRefObject<BlestQueueItem[]>,
   state: BlestGlobalState,
   enqueue: any
 }
 
-const BlestContext = createContext<BlestContextValue>({ queue: [], state: {}, enqueue: () => {} })
+interface BlestProviderOptions {
+  maxBatchSize?: number
+  bufferDelay?: number
+  headers?: any
+}
 
-export const BlestProvider = ({ children, url, options = {} }: { children: any, url: string, options?: any }) => {
+const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {} })
 
-  const [queue, setQueue] = useState<BlestQueueItem[]>([])
+export const BlestProvider = ({ children, url, options = {} }: { children: any, url: string, options?: BlestProviderOptions }) => {
+
   const [state, setState] = useState<BlestGlobalState>({})
-
+  const queue = useRef<BlestQueueItem[]>([])
   const timeout = useRef<number | null>(null)
 
-  const enqueue = useCallback((id: string, route: string, params?: any, selector?: BlestSelector) => {
-    if (timeout.current) clearTimeout(timeout.current)
+  const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
+  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10
+  const headers = options?.headers && typeof options.headers === 'object' ? options.headers : {}
+
+  const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
     setState((state: BlestGlobalState) => {
       return {
         ...state,
@@ -42,76 +50,85 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         }
       }
     })
-    setQueue((queue: BlestQueueItem[]) => [...queue, [id, route, params, selector]])
+    queue.current = [...queue.current, [id, route, parameters, selector]]
+    if (!timeout.current) {
+      timeout.current = setTimeout(process, bufferDelay)
+    }
   }, [])
-  
-  useEffect(() => {
-    if (queue.length > 0) {
-      const headers = options?.headers && typeof options?.headers === 'object' ? options.headers : {}
-      const myQueue = queue.map((q: BlestQueueItem) => [...q])
-      const requestIds = queue.map((q: BlestQueueItem) => q[0])
-      setQueue([])
-      timeout.current = setTimeout(() => {
+
+  const process = useCallback(() => {
+    if (timeout.current) {
+      clearTimeout(timeout.current)
+      timeout.current = null
+    }
+    if (!queue.current.length) {
+      return
+    }
+    const copyQueue: BlestQueueItem[] = queue.current.map((q: BlestQueueItem) => [...q])
+    queue.current = []
+    const batchCount = Math.ceil(copyQueue.length / maxBatchSize)
+    for (let i = 0; i < batchCount; i++) {
+      const myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize)
+      const requestIds = myQueue.map((q: BlestQueueItem) => q[0])
+      setState((state: BlestGlobalState) => {
+        const newState = {
+          ...state
+        }
+        for (let i = 0; i < requestIds.length; i++) {
+          const id = requestIds[i]
+          newState[id] = {
+            loading: true,
+            error: null,
+            data: null
+          }
+        }
+        return newState
+      })
+      fetch(url, {
+        body: JSON.stringify(myQueue),
+        mode: 'cors',
+        method: 'POST',
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        }
+      })
+      .then(async (result) => {
+        const results = await result.json()
         setState((state: BlestGlobalState) => {
           const newState = {
             ...state
           }
-          for (let i = 0; i < requestIds.length; i++) {
+          for (let i = 0; i < results.length; i++) {
+            const item = results[i]
+            newState[item[0]] = {
+              loading: false,
+              error: item[3],
+              data: item[2]
+            }
+          }
+          return newState
+        })
+      })
+      .catch((error) => {
+        setState((state: BlestGlobalState) => {
+          const newState = {
+            ...state
+          }
+          for (let i = 0; i < myQueue.length; i++) {
             const id = requestIds[i]
             newState[id] = {
-              loading: true,
-              error: null,
+              loading: false,
+              error: error,
               data: null
             }
           }
           return newState
         })
-        fetch(url, {
-          body: JSON.stringify(myQueue),
-          mode: 'cors',
-          method: 'POST',
-          headers: {
-            ...headers,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          }
-        })
-        .then(async (result) => {
-          const results = await result.json()
-          setState((state: BlestGlobalState) => {
-            const newState = {
-              ...state
-            }
-            for (let i = 0; i < results.length; i++) {
-              const item = results[i]
-              newState[item[0]] = {
-                loading: false,
-                error: item[3],
-                data: item[2]
-              }
-            }
-            return newState
-          })
-        })
-        .catch((error) => {
-          setState((state: BlestGlobalState) => {
-            const newState = {
-              ...state
-            }
-            for (let i = 0; i < myQueue.length; i++) {
-              const id = requestIds[i]
-              newState[id] = {
-                loading: false,
-                error: error,
-                data: null
-              }
-            }
-            return newState
-          })
-        })
-      }, 1)
+      })
     }
-  }, [queue, url, options])
+  }, [])
 
   return createElement(BlestContext.Provider, { value: { queue, state, enqueue }}, children)
 
@@ -150,7 +167,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
 }
 
-export const useBlestCommand = (route: string, selector?: BlestSelector) => {
+export const useBlestLazyRequest = (route: string, selector?: BlestSelector) => {
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -165,3 +182,5 @@ export const useBlestCommand = (route: string, selector?: BlestSelector) => {
   return [request, queryState || {}]
 
 }
+
+export const useBlestCommand = useBlestLazyRequest

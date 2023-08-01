@@ -56,18 +56,22 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useBlestCommand = exports.useBlestRequest = exports.useBlestContext = exports.BlestProvider = void 0;
+exports.useBlestCommand = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.BlestProvider = void 0;
 var react_1 = require("react");
 var uuid_1 = require("uuid");
 var BlestContext = (0, react_1.createContext)({ queue: [], state: {}, enqueue: function () { } });
 var BlestProvider = function (_a) {
     var children = _a.children, url = _a.url, _b = _a.options, options = _b === void 0 ? {} : _b;
-    var _c = (0, react_1.useState)([]), queue = _c[0], setQueue = _c[1];
-    var _d = (0, react_1.useState)({}), state = _d[0], setState = _d[1];
+    console.log('God is my provider');
+    // const [queue, setQueue] = useState<BlestQueueItem[]>([])
+    var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
+    var queue = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
-    var enqueue = (0, react_1.useCallback)(function (id, route, params, selector) {
-        if (timeout.current)
-            clearTimeout(timeout.current);
+    var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
+    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10;
+    var headers = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
+    var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
+        console.log('enqueue', [id, route, parameters, selector]);
         setState(function (state) {
             var _a;
             return __assign(__assign({}, state), (_a = {}, _a[id] = {
@@ -76,74 +80,95 @@ var BlestProvider = function (_a) {
                 data: null
             }, _a));
         });
-        setQueue(function (queue) { return __spreadArray(__spreadArray([], queue, true), [[id, route, params, selector]], false); });
-    }, []);
-    (0, react_1.useEffect)(function () {
-        if (queue.length > 0) {
-            var headers_1 = (options === null || options === void 0 ? void 0 : options.headers) && typeof (options === null || options === void 0 ? void 0 : options.headers) === 'object' ? options.headers : {};
-            var myQueue_1 = queue.map(function (q) { return __spreadArray([], q, true); });
-            var requestIds_1 = queue.map(function (q) { return q[0]; });
-            setQueue([]);
+        // setQueue((queue: BlestQueueItem[]) => [...queue, [id, route, parameters, selector]])
+        queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
+        if (!timeout.current) {
             timeout.current = setTimeout(function () {
+                process();
+            }, bufferDelay);
+        }
+        else {
+            console.log('timeout exists');
+        }
+    }, []);
+    var process = (0, react_1.useCallback)(function () {
+        console.log('process');
+        if (timeout.current) {
+            clearTimeout(timeout.current);
+            timeout.current = null;
+        }
+        if (!queue.current.length) {
+            console.log('nothing');
+            return;
+        }
+        var copyQueue = queue.current.map(function (q) { return __spreadArray([], q, true); });
+        // setQueue([])
+        queue.current = [];
+        var batchCount = Math.ceil(copyQueue.length / maxBatchSize);
+        var _loop_1 = function (i) {
+            var myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize);
+            var requestIds = myQueue.map(function (q) { return q[0]; });
+            setState(function (state) {
+                var newState = __assign({}, state);
+                for (var i_1 = 0; i_1 < requestIds.length; i_1++) {
+                    var id = requestIds[i_1];
+                    newState[id] = {
+                        loading: true,
+                        error: null,
+                        data: null
+                    };
+                }
+                return newState;
+            });
+            fetch(url, {
+                body: JSON.stringify(myQueue),
+                mode: 'cors',
+                method: 'POST',
+                headers: __assign(__assign({}, headers), { "Content-Type": "application/json", "Accept": "application/json" })
+            })
+                .then(function (result) { return __awaiter(void 0, void 0, void 0, function () {
+                var results;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, result.json()];
+                        case 1:
+                            results = _a.sent();
+                            setState(function (state) {
+                                var newState = __assign({}, state);
+                                for (var i_2 = 0; i_2 < results.length; i_2++) {
+                                    var item = results[i_2];
+                                    newState[item[0]] = {
+                                        loading: false,
+                                        error: item[3],
+                                        data: item[2]
+                                    };
+                                }
+                                return newState;
+                            });
+                            return [2 /*return*/];
+                    }
+                });
+            }); })
+                .catch(function (error) {
                 setState(function (state) {
                     var newState = __assign({}, state);
-                    for (var i = 0; i < requestIds_1.length; i++) {
-                        var id = requestIds_1[i];
+                    for (var i_3 = 0; i_3 < myQueue.length; i_3++) {
+                        var id = requestIds[i_3];
                         newState[id] = {
-                            loading: true,
-                            error: null,
+                            loading: false,
+                            error: error,
                             data: null
                         };
                     }
                     return newState;
                 });
-                fetch(url, {
-                    body: JSON.stringify(myQueue_1),
-                    mode: 'cors',
-                    method: 'POST',
-                    headers: __assign(__assign({}, headers_1), { "Content-Type": "application/json", "Accept": "application/json" })
-                })
-                    .then(function (result) { return __awaiter(void 0, void 0, void 0, function () {
-                    var results;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0: return [4 /*yield*/, result.json()];
-                            case 1:
-                                results = _a.sent();
-                                setState(function (state) {
-                                    var newState = __assign({}, state);
-                                    for (var i = 0; i < results.length; i++) {
-                                        var item = results[i];
-                                        newState[item[0]] = {
-                                            loading: false,
-                                            error: item[3],
-                                            data: item[2]
-                                        };
-                                    }
-                                    return newState;
-                                });
-                                return [2 /*return*/];
-                        }
-                    });
-                }); })
-                    .catch(function (error) {
-                    setState(function (state) {
-                        var newState = __assign({}, state);
-                        for (var i = 0; i < myQueue_1.length; i++) {
-                            var id = requestIds_1[i];
-                            newState[id] = {
-                                loading: false,
-                                error: error,
-                                data: null
-                            };
-                        }
-                        return newState;
-                    });
-                });
-            }, 1);
+            });
+        };
+        for (var i = 0; i < batchCount; i++) {
+            _loop_1(i);
         }
-    }, [queue, url, options]);
-    return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue } }, children);
+    }, []);
+    return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue.current, state: state, enqueue: enqueue } }, children);
 };
 exports.BlestProvider = BlestProvider;
 var useBlestContext = function () {
@@ -160,6 +185,7 @@ var useBlestRequest = function (route, parameters, selector) {
     var queryState = requestId && state[requestId];
     var lastRequest = (0, react_1.useRef)(null);
     (0, react_1.useEffect)(function () {
+        console.log('request');
         var requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || {});
         if (lastRequest.current !== requestHash) {
             lastRequest.current = requestHash;
@@ -171,15 +197,17 @@ var useBlestRequest = function (route, parameters, selector) {
     return queryState || {};
 };
 exports.useBlestRequest = useBlestRequest;
-var useBlestCommand = function (route, selector) {
+var useBlestLazyRequest = function (route, selector) {
     var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue;
     var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
     var queryState = requestId && state[requestId];
     var request = (0, react_1.useCallback)(function (parameters) {
+        console.log('request');
         var id = (0, uuid_1.v4)();
         setRequestId(id);
         enqueue(id, route, parameters, selector);
     }, [route, selector, enqueue]);
     return [request, queryState || {}];
 };
-exports.useBlestCommand = useBlestCommand;
+exports.useBlestLazyRequest = useBlestLazyRequest;
+exports.useBlestCommand = exports.useBlestLazyRequest;
