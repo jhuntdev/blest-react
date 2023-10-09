@@ -204,7 +204,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   }, [route, parameters, selector])
 
   return {
-    ...(queryState ? { ...queryState, loading: queryState.loading !== false } : {}),
+    ...(queryState || { loading: true, error: null, data: null }),
     fetchMore,
     refresh
   }
@@ -232,7 +232,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
     }
   }, [route, selector, enqueue])
 
-  return [request, queryState ? { ...queryState, loading: queryState.loading !== false } : {}]
+  return [request, queryState || { loading: true, error: null, data: null }]
 
 }
 
