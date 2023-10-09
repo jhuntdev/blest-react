@@ -11,7 +11,7 @@ interface BlestGlobalState {
   [id: string]: BlestRequestState;
 }
 
-type BlestSelector = Array<string | BlestSelector>
+export type BlestSelector = Array<string | BlestSelector>
 
 type BlestQueueItem = [string, string, any?, BlestSelector?]
 
@@ -22,10 +22,20 @@ interface BlestContextValue {
   ammend: any
 }
 
-interface BlestProviderOptions {
+export interface BlestProviderOptions {
   maxBatchSize?: number
   bufferDelay?: number
   headers?: any
+}
+
+export interface BlestRequestOptions {
+  skip?: boolean
+  fetchMore?: any
+}
+
+export interface BlestLazyRequestOptions {
+  skip?: boolean
+  onComplete?: any
 }
 
 const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {}, ammend: () => {} })
@@ -157,7 +167,7 @@ export const useBlestContext = () => {
 
 }
 
-export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector, options?: any) => {
+export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
 
   const { state, enqueue, ammend } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -184,7 +194,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
         ammend(requestId, mergeFunction(state[requestId]?.data, state[id]?.data))
         clearInterval(fetchMoreInterval)
       }
-    }, 10)
+    }, 1)
   }, [route, requestId])
 
   return {
@@ -194,16 +204,25 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
 }
 
-export const useBlestLazyRequest = (route: string, selector?: BlestSelector) => {
+export const useBlestLazyRequest = (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => {
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
   const queryState = requestId && state[requestId]
 
   const request = useCallback((parameters?: any) => {
+    if (options?.skip) return;
     const id = uuidv4()
     setRequestId(id)
     enqueue(id, route, parameters, selector)
+    if (options?.onComplete) {
+      const onCompleteInterval = setInterval(() => {
+        if (state[id]?.data || state[id]?.error) {
+          options.onComplete(state[id]?.data, state[id]?.error)
+          clearInterval(onCompleteInterval)
+        }
+      }, 1)
+    }
   }, [route, selector, enqueue])
 
   return [request, queryState || {}]

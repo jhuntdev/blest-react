@@ -200,19 +200,30 @@ var useBlestRequest = function (route, parameters, selector, options) {
                 ammend(requestId, mergeFunction((_b = state[requestId]) === null || _b === void 0 ? void 0 : _b.data, (_c = state[id]) === null || _c === void 0 ? void 0 : _c.data));
                 clearInterval(fetchMoreInterval);
             }
-        }, 10);
+        }, 1);
     }, [route, requestId]);
     return __assign(__assign({}, (queryState || {})), { fetchMore: fetchMore });
 };
 exports.useBlestRequest = useBlestRequest;
-var useBlestLazyRequest = function (route, selector) {
+var useBlestLazyRequest = function (route, selector, options) {
     var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue;
     var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
     var queryState = requestId && state[requestId];
     var request = (0, react_1.useCallback)(function (parameters) {
+        if (options === null || options === void 0 ? void 0 : options.skip)
+            return;
         var id = (0, uuid_1.v4)();
         setRequestId(id);
         enqueue(id, route, parameters, selector);
+        if (options === null || options === void 0 ? void 0 : options.onComplete) {
+            var onCompleteInterval_1 = setInterval(function () {
+                var _a, _b, _c, _d;
+                if (((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) {
+                    options.onComplete((_c = state[id]) === null || _c === void 0 ? void 0 : _c.data, (_d = state[id]) === null || _d === void 0 ? void 0 : _d.error);
+                    clearInterval(onCompleteInterval_1);
+                }
+            }, 1);
+        }
     }, [route, selector, enqueue]);
     return [request, queryState || {}];
 };
