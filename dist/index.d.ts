@@ -36,6 +36,7 @@ export declare const BlestProvider: ({ children, url, options }: {
 export declare const useBlestContext: () => BlestContextValue;
 export declare const useBlestRequest: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
     fetchMore: (parameters?: any, mergeFunction?: any) => void;
+    refresh: () => void;
     loading?: boolean | undefined;
     error?: any;
     data?: any;
@@ -45,6 +46,7 @@ export declare const useBlestCommand: (route: string, selector?: BlestSelector, 
 export declare const useLazyRequest: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => {}[];
 export declare const useRequest: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
     fetchMore: (parameters?: any, mergeFunction?: any) => void;
+    refresh: () => void;
     loading?: boolean | undefined;
     error?: any;
     data?: any;

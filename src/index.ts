@@ -197,9 +197,16 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
     }, 1)
   }, [route, requestId])
 
+  const refresh = useCallback(() => {
+    const id = uuidv4()
+    setRequestId(id)
+    enqueue(id, route, parameters, selector)
+  }, [route, parameters, selector])
+
   return {
-    ...(queryState || {}),
-    fetchMore
+    ...(queryState ? { ...queryState, loading: queryState.loading !== false } : {}),
+    fetchMore,
+    refresh
   }
 
 }
@@ -225,7 +232,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
     }
   }, [route, selector, enqueue])
 
-  return [request, queryState || {}]
+  return [request, queryState ? { ...queryState, loading: queryState.loading !== false } : {}]
 
 }
 

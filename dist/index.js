@@ -202,7 +202,12 @@ var useBlestRequest = function (route, parameters, selector, options) {
             }
         }, 1);
     }, [route, requestId]);
-    return __assign(__assign({}, (queryState || {})), { fetchMore: fetchMore });
+    var refresh = (0, react_1.useCallback)(function () {
+        var id = (0, uuid_1.v4)();
+        setRequestId(id);
+        enqueue(id, route, parameters, selector);
+    }, [route, parameters, selector]);
+    return __assign(__assign({}, (queryState ? __assign(__assign({}, queryState), { loading: queryState.loading !== false }) : {})), { fetchMore: fetchMore, refresh: refresh });
 };
 exports.useBlestRequest = useBlestRequest;
 var useBlestLazyRequest = function (route, selector, options) {
@@ -225,7 +230,7 @@ var useBlestLazyRequest = function (route, selector, options) {
             }, 1);
         }
     }, [route, selector, enqueue]);
-    return [request, queryState || {}];
+    return [request, queryState ? __assign(__assign({}, queryState), { loading: queryState.loading !== false }) : {}];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
 exports.useBlestCommand = exports.useBlestLazyRequest;
