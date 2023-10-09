@@ -91,20 +91,20 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     for (let i = 0; i < batchCount; i++) {
       const myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize)
       const requestIds = myQueue.map((q: BlestQueueItem) => q[0])
-      setState((state: BlestGlobalState) => {
-        const newState = {
-          ...state
-        }
-        for (let i = 0; i < requestIds.length; i++) {
-          const id = requestIds[i]
-          newState[id] = {
-            loading: true,
-            error: null,
-            data: null
-          }
-        }
-        return newState
-      })
+      // setState((state: BlestGlobalState) => {
+      //   const newState = {
+      //     ...state
+      //   }
+      //   for (let i = 0; i < requestIds.length; i++) {
+      //     const id = requestIds[i]
+      //     newState[id] = {
+      //       loading: true,
+      //       error: null,
+      //       data: null
+      //     }
+      //   }
+      //   return newState
+      // })
       fetch(url, {
         body: JSON.stringify(myQueue),
         mode: 'cors',
@@ -198,10 +198,9 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   }, [route, requestId])
 
   const refresh = useCallback(() => {
-    const id = uuidv4()
-    setRequestId(id)
-    enqueue(id, route, parameters, selector)
-  }, [route, parameters, selector])
+    if (!requestId) return;
+    enqueue(requestId, route, parameters, selector)
+  }, [requestId, route, parameters, selector])
 
   return {
     ...(queryState || { loading: true, error: null, data: null }),

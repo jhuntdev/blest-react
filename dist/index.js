@@ -102,18 +102,20 @@ var BlestProvider = function (_a) {
         var _loop_1 = function (i) {
             var myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize);
             var requestIds = myQueue.map(function (q) { return q[0]; });
-            setState(function (state) {
-                var newState = __assign({}, state);
-                for (var i_1 = 0; i_1 < requestIds.length; i_1++) {
-                    var id = requestIds[i_1];
-                    newState[id] = {
-                        loading: true,
-                        error: null,
-                        data: null
-                    };
-                }
-                return newState;
-            });
+            // setState((state: BlestGlobalState) => {
+            //   const newState = {
+            //     ...state
+            //   }
+            //   for (let i = 0; i < requestIds.length; i++) {
+            //     const id = requestIds[i]
+            //     newState[id] = {
+            //       loading: true,
+            //       error: null,
+            //       data: null
+            //     }
+            //   }
+            //   return newState
+            // })
             fetch(url, {
                 body: JSON.stringify(myQueue),
                 mode: 'cors',
@@ -129,8 +131,8 @@ var BlestProvider = function (_a) {
                             results = _a.sent();
                             setState(function (state) {
                                 var newState = __assign({}, state);
-                                for (var i_2 = 0; i_2 < results.length; i_2++) {
-                                    var item = results[i_2];
+                                for (var i_1 = 0; i_1 < results.length; i_1++) {
+                                    var item = results[i_1];
                                     newState[item[0]] = {
                                         loading: false,
                                         error: item[3],
@@ -146,8 +148,8 @@ var BlestProvider = function (_a) {
                 .catch(function (error) {
                 setState(function (state) {
                     var newState = __assign({}, state);
-                    for (var i_3 = 0; i_3 < myQueue.length; i_3++) {
-                        var id = requestIds[i_3];
+                    for (var i_2 = 0; i_2 < myQueue.length; i_2++) {
+                        var id = requestIds[i_2];
                         newState[id] = {
                             loading: false,
                             error: error,
@@ -203,10 +205,10 @@ var useBlestRequest = function (route, parameters, selector, options) {
         }, 1);
     }, [route, requestId]);
     var refresh = (0, react_1.useCallback)(function () {
-        var id = (0, uuid_1.v4)();
-        setRequestId(id);
-        enqueue(id, route, parameters, selector);
-    }, [route, parameters, selector]);
+        if (!requestId)
+            return;
+        enqueue(requestId, route, parameters, selector);
+    }, [requestId, route, parameters, selector]);
     return __assign(__assign({}, (queryState || { loading: true, error: null, data: null })), { fetchMore: fetchMore, refresh: refresh });
 };
 exports.useBlestRequest = useBlestRequest;
