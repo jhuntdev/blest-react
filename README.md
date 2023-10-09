@@ -57,13 +57,13 @@ const MyComponent = () => {
 }
 ```
 
-Use the `useBlestCommand` hook to generate a request function you can call when needed.
+Use the `useBlestLazyRequest` hook to generate a request function you can call when needed.
 
 ```javascript
-import { useBlestCommand } from 'blest-react'
+import { useBlestLazyRequest } from 'blest-react'
 
 const MyForm = () => {
-  const [submitForm, { data, loading, error }] = useBlestCommand('submitForm')
+  const [submitForm, { data, loading, error }] = useBlestLazyRequest('submitForm')
 
   const handleSubmit = (values) => {
     submitForm(values)

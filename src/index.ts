@@ -19,6 +19,7 @@ interface BlestContextValue {
   queue: MutableRefObject<BlestQueueItem[]>,
   state: BlestGlobalState,
   enqueue: any
+  ammend: any
 }
 
 interface BlestProviderOptions {
@@ -27,7 +28,7 @@ interface BlestProviderOptions {
   headers?: any
 }
 
-const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {} })
+const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {}, ammend: () => {} })
 
 export const BlestProvider = ({ children, url, options = {} }: { children: any, url: string, options?: BlestProviderOptions }) => {
 
@@ -54,6 +55,16 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     if (!timeout.current) {
       timeout.current = setTimeout(() => { process() }, bufferDelay)
     }
+  }, [])
+
+  const ammend = useCallback((id: string, data: any) => {
+    setState((state) => ({
+      ...state,
+      [id]: {
+        ...state[id],
+        data
+      }
+    }))
   }, [])
 
   const process = useCallback(() => {
@@ -130,7 +141,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     }
   }, [])
 
-  return createElement(BlestContext.Provider, { value: { queue, state, enqueue }}, children)
+  return createElement(BlestContext.Provider, { value: { queue, state, enqueue, ammend }}, children)
 
 }
 
@@ -146,14 +157,15 @@ export const useBlestContext = () => {
 
 }
 
-export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector) => {
+export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector, options?: any) => {
 
-  const { state, enqueue } = useContext(BlestContext)
+  const { state, enqueue, ammend } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
   const queryState = requestId && state[requestId]
   const lastRequest = useRef<string | null>(null)
 
   useEffect(() => {
+    if (options?.skip) return;
     const requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || {})
     if (lastRequest.current !== requestHash) {
       lastRequest.current = requestHash
@@ -163,7 +175,22 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
     }
   }, [route, parameters, selector, enqueue])
 
-  return queryState || {}
+  const fetchMore = useCallback((parameters?: any, mergeFunction?: any) => {
+    if (!requestId) return;
+    const id = uuidv4()
+    enqueue(id, route, parameters, selector)
+    const fetchMoreInterval = setInterval(() => {
+      if (state[id]?.data) {
+        ammend(requestId, mergeFunction(state[requestId]?.data, state[id]?.data))
+        clearInterval(fetchMoreInterval)
+      }
+    }, 10)
+  }, [route, requestId])
+
+  return {
+    ...(queryState || {}),
+    fetchMore
+  }
 
 }
 
@@ -184,3 +211,6 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector) => 
 }
 
 export const useBlestCommand = useBlestLazyRequest
+export const useLazyRequest = useBlestLazyRequest
+export const useRequest = useBlestRequest
+export const useCommand = useBlestCommand

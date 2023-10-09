@@ -56,14 +56,12 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useBlestCommand = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.BlestProvider = void 0;
+exports.useCommand = exports.useRequest = exports.useLazyRequest = exports.useBlestCommand = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.BlestProvider = void 0;
 var react_1 = require("react");
 var uuid_1 = require("uuid");
-var BlestContext = (0, react_1.createContext)({ queue: [], state: {}, enqueue: function () { } });
+var BlestContext = (0, react_1.createContext)({ queue: { current: [] }, state: {}, enqueue: function () { }, ammend: function () { } });
 var BlestProvider = function (_a) {
     var children = _a.children, url = _a.url, _b = _a.options, options = _b === void 0 ? {} : _b;
-    console.log('God is my provider');
-    // const [queue, setQueue] = useState<BlestQueueItem[]>([])
     var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
     var queue = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
@@ -71,7 +69,6 @@ var BlestProvider = function (_a) {
     var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10;
     var headers = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
     var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
-        console.log('enqueue', [id, route, parameters, selector]);
         setState(function (state) {
             var _a;
             return __assign(__assign({}, state), (_a = {}, _a[id] = {
@@ -80,29 +77,26 @@ var BlestProvider = function (_a) {
                 data: null
             }, _a));
         });
-        // setQueue((queue: BlestQueueItem[]) => [...queue, [id, route, parameters, selector]])
         queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
         if (!timeout.current) {
-            timeout.current = setTimeout(function () {
-                process();
-            }, bufferDelay);
-        }
-        else {
-            console.log('timeout exists');
+            timeout.current = setTimeout(function () { process(); }, bufferDelay);
         }
     }, []);
+    var ammend = (0, react_1.useCallback)(function (id, data) {
+        setState(function (state) {
+            var _a;
+            return (__assign(__assign({}, state), (_a = {}, _a[id] = __assign(__assign({}, state[id]), { data: data }), _a)));
+        });
+    }, []);
     var process = (0, react_1.useCallback)(function () {
-        console.log('process');
         if (timeout.current) {
             clearTimeout(timeout.current);
             timeout.current = null;
         }
         if (!queue.current.length) {
-            console.log('nothing');
             return;
         }
         var copyQueue = queue.current.map(function (q) { return __spreadArray([], q, true); });
-        // setQueue([])
         queue.current = [];
         var batchCount = Math.ceil(copyQueue.length / maxBatchSize);
         var _loop_1 = function (i) {
@@ -168,7 +162,7 @@ var BlestProvider = function (_a) {
             _loop_1(i);
         }
     }, []);
-    return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue.current, state: state, enqueue: enqueue } }, children);
+    return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue, ammend: ammend } }, children);
 };
 exports.BlestProvider = BlestProvider;
 var useBlestContext = function () {
@@ -179,13 +173,14 @@ var useBlestContext = function () {
     return context;
 };
 exports.useBlestContext = useBlestContext;
-var useBlestRequest = function (route, parameters, selector) {
-    var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue;
+var useBlestRequest = function (route, parameters, selector, options) {
+    var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue, ammend = _a.ammend;
     var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
     var queryState = requestId && state[requestId];
     var lastRequest = (0, react_1.useRef)(null);
     (0, react_1.useEffect)(function () {
-        console.log('request');
+        if (options === null || options === void 0 ? void 0 : options.skip)
+            return;
         var requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || {});
         if (lastRequest.current !== requestHash) {
             lastRequest.current = requestHash;
@@ -194,7 +189,20 @@ var useBlestRequest = function (route, parameters, selector) {
             enqueue(id, route, parameters, selector);
         }
     }, [route, parameters, selector, enqueue]);
-    return queryState || {};
+    var fetchMore = (0, react_1.useCallback)(function (parameters, mergeFunction) {
+        if (!requestId)
+            return;
+        var id = (0, uuid_1.v4)();
+        enqueue(id, route, parameters, selector);
+        var fetchMoreInterval = setInterval(function () {
+            var _a, _b, _c;
+            if ((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) {
+                ammend(requestId, mergeFunction((_b = state[requestId]) === null || _b === void 0 ? void 0 : _b.data, (_c = state[id]) === null || _c === void 0 ? void 0 : _c.data));
+                clearInterval(fetchMoreInterval);
+            }
+        }, 10);
+    }, [route, requestId]);
+    return __assign(__assign({}, (queryState || {})), { fetchMore: fetchMore });
 };
 exports.useBlestRequest = useBlestRequest;
 var useBlestLazyRequest = function (route, selector) {
@@ -202,7 +210,6 @@ var useBlestLazyRequest = function (route, selector) {
     var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
     var queryState = requestId && state[requestId];
     var request = (0, react_1.useCallback)(function (parameters) {
-        console.log('request');
         var id = (0, uuid_1.v4)();
         setRequestId(id);
         enqueue(id, route, parameters, selector);
@@ -211,3 +218,6 @@ var useBlestLazyRequest = function (route, selector) {
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
 exports.useBlestCommand = exports.useBlestLazyRequest;
+exports.useLazyRequest = exports.useBlestLazyRequest;
+exports.useRequest = exports.useBlestRequest;
+exports.useCommand = exports.useBlestCommand;
