@@ -72,7 +72,7 @@ var BlestProvider = function (_a) {
         setState(function (state) {
             var _a;
             return __assign(__assign({}, state), (_a = {}, _a[id] = {
-                loading: false,
+                loading: true,
                 error: null,
                 data: null
             }, _a));

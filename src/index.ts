@@ -55,7 +55,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
       return {
         ...state,
         [id]: {
-          loading: false,
+          loading: true,
           error: null,
           data: null
         }
