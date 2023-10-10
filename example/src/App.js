@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BlestProvider, useBlestLazyRequest, useBlestRequest } from './blest'
+import { BlestProvider, useBlestLazyRequest, useBlestRequest } from 'blest-react'
 
 function App() {
   return (
