@@ -22,11 +22,11 @@ export interface BlestProviderOptions {
 }
 export interface BlestRequestOptions {
     skip?: boolean;
-    fetchMore?: (data: any) => void;
+    fetchMore?: (parameters: any, mergeFunction: (oldData: any, newData: any) => any) => void;
 }
 export interface BlestLazyRequestOptions {
     skip?: boolean;
-    onComplete?: (oldData: any, newData: any) => void;
+    onComplete?: (data: any, error: any) => void;
 }
 export declare const BlestProvider: ({ children, url, options }: {
     children: any;

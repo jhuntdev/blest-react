@@ -30,12 +30,12 @@ export interface BlestProviderOptions {
 
 export interface BlestRequestOptions {
   skip?: boolean
-  fetchMore?: (data: any) => void
+  fetchMore?: (parameters: any, mergeFunction: (oldData: any, newData: any) => any) => void
 }
 
 export interface BlestLazyRequestOptions {
   skip?: boolean
-  onComplete?: (oldData: any, newData: any) => void
+  onComplete?: (data: any, error: any) => void
 }
 
 const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {}, ammend: () => {} })
@@ -47,7 +47,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   // const timeout = useRef<number | null>(null)
 
   const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
-  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10
+  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
   const headers = options?.headers && typeof options.headers === 'object' ? options.headers : {}
 
   const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
@@ -226,7 +226,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
       const onCompleteInterval = setInterval(() => {
         if (state[id]?.data || state[id]?.error) {
           // @ts-ignore
-          options.onComplete(state[id]?.data, state[id]?.error)
+          options.onComplete(state[id].data, state[id].error)
           clearInterval(onCompleteInterval)
         }
       }, 1)

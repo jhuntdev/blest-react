@@ -66,7 +66,7 @@ var BlestProvider = function (_a) {
     var queue = (0, react_1.useRef)([]);
     // const timeout = useRef<number | null>(null)
     var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
-    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10;
+    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
     var headers = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
     var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
         setState(function (state) {
@@ -225,10 +225,10 @@ var useBlestLazyRequest = function (route, selector, options) {
         enqueue(id, route, parameters, selector);
         if ((options === null || options === void 0 ? void 0 : options.onComplete) && typeof options.onComplete === 'function') {
             var onCompleteInterval_1 = setInterval(function () {
-                var _a, _b, _c, _d;
+                var _a, _b;
                 if (((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) {
                     // @ts-ignore
-                    options.onComplete((_c = state[id]) === null || _c === void 0 ? void 0 : _c.data, (_d = state[id]) === null || _d === void 0 ? void 0 : _d.error);
+                    options.onComplete(state[id].data, state[id].error);
                     clearInterval(onCompleteInterval_1);
                 }
             }, 1);
