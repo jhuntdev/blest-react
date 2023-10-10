@@ -69,13 +69,16 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   }, [])
 
   const ammend = useCallback((id: string, data: any) => {
-    setState((state) => ({
-      ...state,
-      [id]: {
-        ...state[id],
-        data
+    setState((state) => {
+      const newState = {
+        ...state,
+        [id]: {
+          ...state[id],
+          data
+        }
       }
-    }))
+      return newState
+    })
   }, [])
 
   const process = useCallback(() => {
@@ -196,12 +199,6 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
     allRequestIds.current = [...allRequestIds.current, id]
     callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
     enqueue(id, route, parameters, selector)
-    // const fetchMoreInterval = setInterval(() => {
-    //   if (state[id]?.data) {
-    //     ammend(requestId, mergeFunction(state[requestId]?.data || {}, state[id].data))
-    //     clearInterval(fetchMoreInterval)
-    //   }
-    // }, 1)
   }, [route, requestId])
 
   const refresh = useCallback(() => {
@@ -210,12 +207,13 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   }, [requestId, route, parameters, selector])
 
   useEffect(() => {
+    if (!requestId) return;
     for (let i = 0; i < allRequestIds.current.length; i++) {
       const id = allRequestIds.current[i]
       if ((state[id]?.data || state[id]?.error) && doneRequestIds.current.indexOf(id) === -1) {
         doneRequestIds.current = [...doneRequestIds.current, id]
         if (state[id].data && typeof callbacksById.current[id] === 'function') {
-          ammend(id, callbacksById.current[id](requestId ? state[requestId]?.data || {} : {}, state[id].data))
+          ammend(requestId, callbacksById.current[id](requestId ? state[requestId]?.data || {} : {}, state[id].data))
         }
       }
     }

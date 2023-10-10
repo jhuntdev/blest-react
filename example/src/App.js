@@ -20,11 +20,20 @@ function App() {
 }
 
 const Component1 = () => {
-  const { data, error, loading } = useBlestRequest('hello', null, ['hello'])
+  const { data, error, loading, fetchMore } = useBlestRequest('hello', null, ['hello'])
+  const handleClick = () => {
+    fetchMore(
+      null,
+      (oldData, newData) => {
+        return { ...newData, count: oldData?.count ? oldData.count + 1 : 1 }
+      }
+    )
+  }
   return (
     <div>
       <h3>{`["hello", null, ["hello"]]`}</h3>
       <p>{loading ? 'Loading...' : error ? 'Error: ' + error.message : JSON.stringify(data)}</p>
+      {!loading && !error && <button onClick={handleClick}>Fetch More ({data?.count || 0})</button>}
     </div>
   )
 }

@@ -86,7 +86,8 @@ var BlestProvider = function (_a) {
     var ammend = (0, react_1.useCallback)(function (id, data) {
         setState(function (state) {
             var _a;
-            return (__assign(__assign({}, state), (_a = {}, _a[id] = __assign(__assign({}, state[id]), { data: data }), _a)));
+            var newState = __assign(__assign({}, state), (_a = {}, _a[id] = __assign(__assign({}, state[id]), { data: data }), _a));
+            return newState;
         });
     }, []);
     var process = (0, react_1.useCallback)(function () {
@@ -204,12 +205,6 @@ var useBlestRequest = function (route, parameters, selector, options) {
         allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
         callbacksById.current = __assign(__assign({}, callbacksById.current), (_a = {}, _a[id] = mergeFunction, _a));
         enqueue(id, route, parameters, selector);
-        // const fetchMoreInterval = setInterval(() => {
-        //   if (state[id]?.data) {
-        //     ammend(requestId, mergeFunction(state[requestId]?.data || {}, state[id].data))
-        //     clearInterval(fetchMoreInterval)
-        //   }
-        // }, 1)
     }, [route, requestId]);
     var refresh = (0, react_1.useCallback)(function () {
         if (!requestId)
@@ -218,12 +213,14 @@ var useBlestRequest = function (route, parameters, selector, options) {
     }, [requestId, route, parameters, selector]);
     (0, react_1.useEffect)(function () {
         var _a, _b, _c;
+        if (!requestId)
+            return;
         for (var i = 0; i < allRequestIds.current.length; i++) {
             var id = allRequestIds.current[i];
             if ((((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) && doneRequestIds.current.indexOf(id) === -1) {
                 doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
                 if (state[id].data && typeof callbacksById.current[id] === 'function') {
-                    ammend(id, callbacksById.current[id](requestId ? ((_c = state[requestId]) === null || _c === void 0 ? void 0 : _c.data) || {} : {}, state[id].data));
+                    ammend(requestId, callbacksById.current[id](requestId ? ((_c = state[requestId]) === null || _c === void 0 ? void 0 : _c.data) || {} : {}, state[id].data));
                 }
             }
         }
