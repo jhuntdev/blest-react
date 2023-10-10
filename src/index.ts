@@ -85,7 +85,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     if (!queue.current.length) {
       return
     }
-    const copyQueue: BlestQueueItem[] = queue.current.map((q: BlestQueueItem) => [...q])
+    const copyQueue: BlestQueueItem[] = [...queue.current] // .map((q: BlestQueueItem) => [...q])
     queue.current = []
     const batchCount = Math.ceil(copyQueue.length / maxBatchSize)
     for (let i = 0; i < batchCount; i++) {
@@ -183,7 +183,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
       setRequestId(id)
       enqueue(id, route, parameters, selector)
     }
-  }, [route, parameters, selector, enqueue])
+  }, [route, parameters, selector, options, enqueue])
 
   const fetchMore = useCallback((parameters?: any, mergeFunction?: any) => {
     if (!requestId) return;
@@ -229,7 +229,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
         }
       }, 1)
     }
-  }, [route, selector, enqueue])
+  }, [route, selector, options, enqueue])
 
   return [request, queryState || { loading: true, error: null, data: null }]
 

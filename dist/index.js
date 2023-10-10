@@ -96,7 +96,7 @@ var BlestProvider = function (_a) {
         if (!queue.current.length) {
             return;
         }
-        var copyQueue = queue.current.map(function (q) { return __spreadArray([], q, true); });
+        var copyQueue = __spreadArray([], queue.current, true); // .map((q: BlestQueueItem) => [...q])
         queue.current = [];
         var batchCount = Math.ceil(copyQueue.length / maxBatchSize);
         var _loop_1 = function (i) {
@@ -190,7 +190,7 @@ var useBlestRequest = function (route, parameters, selector, options) {
             setRequestId(id);
             enqueue(id, route, parameters, selector);
         }
-    }, [route, parameters, selector, enqueue]);
+    }, [route, parameters, selector, options, enqueue]);
     var fetchMore = (0, react_1.useCallback)(function (parameters, mergeFunction) {
         if (!requestId)
             return;
@@ -231,7 +231,7 @@ var useBlestLazyRequest = function (route, selector, options) {
                 }
             }, 1);
         }
-    }, [route, selector, enqueue]);
+    }, [route, selector, options, enqueue]);
     return [request, queryState || { loading: true, error: null, data: null }];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
