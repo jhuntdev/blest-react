@@ -35,7 +35,7 @@ export declare const BlestProvider: ({ children, url, options }: {
 }) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>>;
 export declare const useBlestContext: () => BlestContextValue;
 export declare const useBlestRequest: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
-    fetchMore: (parameters?: any, mergeFunction?: any) => void;
+    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => void;
     refresh: () => void;
     loading: boolean;
     error: any;
@@ -45,7 +45,7 @@ export declare const useBlestLazyRequest: (route: string, selector?: BlestSelect
 export declare const useBlestCommand: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => void))[];
 export declare const useLazyRequest: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => void))[];
 export declare const useRequest: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
-    fetchMore: (parameters?: any, mergeFunction?: any) => void;
+    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => void;
     refresh: () => void;
     loading: boolean;
     error: any;

@@ -44,7 +44,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
-  // const timeout = useRef<number | null>(null)
+  const timeout = useRef<number | null>(null)
 
   const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
   const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
@@ -62,9 +62,9 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
       }
     })
     queue.current = [...queue.current, [id, route, parameters, selector]]
-    // if (!timeout.current) {
-    //   timeout.current = setTimeout(() => { process() }, bufferDelay)
-    // }
+    if (!timeout.current) {
+      timeout.current = setTimeout(() => { process() }, bufferDelay)
+    }
     setTimeout(() => { process() }, bufferDelay)
   }, [])
 
@@ -79,10 +79,10 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   }, [])
 
   const process = useCallback(() => {
-    // if (timeout.current) {
-    //   clearTimeout(timeout.current)
-    //   timeout.current = null
-    // }
+    if (timeout.current) {
+      clearTimeout(timeout.current)
+      timeout.current = null
+    }
     if (!queue.current.length) {
       return
     }
@@ -174,6 +174,9 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   const [requestId, setRequestId] = useState<string | null>(null)
   const queryState = requestId && state[requestId]
   const lastRequest = useRef<string | null>(null)
+  const allRequestIds = useRef<string[]>([])
+  const doneRequestIds = useRef<string[]>([])
+  const callbacksById = useRef<any>({})
 
   useEffect(() => {
     if (options?.skip) return;
@@ -182,26 +185,41 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
       lastRequest.current = requestHash
       const id = uuidv4()
       setRequestId(id)
+      allRequestIds.current = [...allRequestIds.current, id]
       enqueue(id, route, parameters, selector)
     }
   }, [route, parameters, selector, options, enqueue])
 
-  const fetchMore = useCallback((parameters?: any, mergeFunction?: any) => {
+  const fetchMore = useCallback((parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
     if (!requestId) return;
     const id = uuidv4()
+    allRequestIds.current = [...allRequestIds.current, id]
+    callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
     enqueue(id, route, parameters, selector)
-    const fetchMoreInterval = setInterval(() => {
-      if (state[id]?.data) {
-        ammend(requestId, mergeFunction(state[requestId]?.data, state[id]?.data))
-        clearInterval(fetchMoreInterval)
-      }
-    }, 1)
+    // const fetchMoreInterval = setInterval(() => {
+    //   if (state[id]?.data) {
+    //     ammend(requestId, mergeFunction(state[requestId]?.data || {}, state[id].data))
+    //     clearInterval(fetchMoreInterval)
+    //   }
+    // }, 1)
   }, [route, requestId])
 
   const refresh = useCallback(() => {
     if (!requestId) return;
     enqueue(requestId, route, parameters, selector)
   }, [requestId, route, parameters, selector])
+
+  useEffect(() => {
+    for (let i = 0; i < allRequestIds.current.length; i++) {
+      const id = allRequestIds.current[i]
+      if ((state[id]?.data || state[id]?.error) && doneRequestIds.current.indexOf(id) === -1) {
+        doneRequestIds.current = [...doneRequestIds.current, id]
+        if (state[id].data && typeof callbacksById.current[id] === 'function') {
+          ammend(id, callbacksById.current[id](requestId ? state[requestId]?.data || {} : {}, state[id].data))
+        }
+      }
+    }
+  }, [state, options, requestId])
 
   return {
     ...(queryState || { loading: true, error: null, data: null }),
@@ -216,22 +234,29 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
   const queryState = requestId && state[requestId]
+  const allRequestIds = useRef<string[]>([])
+  const doneRequestIds = useRef<string[]>([])
 
   const request = useCallback((parameters?: any) => {
     if (options?.skip) return;
     const id = uuidv4()
     setRequestId(id)
+    allRequestIds.current = [...allRequestIds.current, id]
     enqueue(id, route, parameters, selector)
-    if (options?.onComplete && typeof options.onComplete === 'function') {
-      const onCompleteInterval = setInterval(() => {
-        if (state[id]?.data || state[id]?.error) {
+  }, [route, selector, options, enqueue])
+
+  useEffect(() => {
+    for (let i = 0; i < allRequestIds.current.length; i++) {
+      const id = allRequestIds.current[i]
+      if ((state[id]?.data || state[id]?.error) && doneRequestIds.current.indexOf(id) === -1) {
+        doneRequestIds.current = [...doneRequestIds.current, id]
+        if (options?.onComplete && typeof options.onComplete === 'function') {
           // @ts-ignore
           options.onComplete(state[id].data, state[id].error)
-          clearInterval(onCompleteInterval)
         }
-      }, 1)
+      }
     }
-  }, [route, selector, options, enqueue])
+  }, [state, options])
 
   return [request, queryState || { loading: true, error: null, data: null }]
 

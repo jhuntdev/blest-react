@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BlestProvider, useBlestRequest } from 'blest-react'
+import { useEffect, useState } from 'react'
+import { BlestProvider, useBlestLazyRequest, useBlestRequest } from './blest'
 
 function App() {
   return (
@@ -16,7 +16,7 @@ function App() {
         <Component4 />
       </div>
     </BlestProvider>
-  );
+  )
 }
 
 const Component1 = () => {
@@ -31,7 +31,10 @@ const Component1 = () => {
 
 const Component2 = () => {
   const [name, setName] = useState('Steve')
-  const { data, error, loading } = useBlestRequest('greet', { name })
+  const [greet, { data, error, loading }] = useBlestLazyRequest('greet', null)
+  useEffect(() => {
+    greet({ name })
+  }, [greet, name])
   return (
     <div>
       <h3>{`["greet", {"name": "`}<input type='text' value={name} onChange={(e) => setName(e.target.value)} />{`"}]`}</h3>
