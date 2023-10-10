@@ -18,8 +18,8 @@ type BlestQueueItem = [string, string, any?, BlestSelector?]
 interface BlestContextValue {
   queue: MutableRefObject<BlestQueueItem[]>,
   state: BlestGlobalState,
-  enqueue: any
-  ammend: any
+  enqueue: (id: string, route: string, parameters?: any, selector?: BlestSelector) => void
+  ammend: (id: string, data: any) => void
 }
 
 export interface BlestProviderOptions {
@@ -30,12 +30,12 @@ export interface BlestProviderOptions {
 
 export interface BlestRequestOptions {
   skip?: boolean
-  fetchMore?: any
+  fetchMore?: (data: any) => void
 }
 
 export interface BlestLazyRequestOptions {
   skip?: boolean
-  onComplete?: any
+  onComplete?: (oldData: any, newData: any) => void
 }
 
 const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {}, ammend: () => {} })
@@ -44,7 +44,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
-  const timeout = useRef<number | null>(null)
+  // const timeout = useRef<number | null>(null)
 
   const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
   const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10
@@ -62,9 +62,10 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
       }
     })
     queue.current = [...queue.current, [id, route, parameters, selector]]
-    if (!timeout.current) {
-      timeout.current = setTimeout(() => { process() }, bufferDelay)
-    }
+    // if (!timeout.current) {
+    //   timeout.current = setTimeout(() => { process() }, bufferDelay)
+    // }
+    setTimeout(() => { process() }, bufferDelay)
   }, [])
 
   const ammend = useCallback((id: string, data: any) => {
@@ -78,10 +79,10 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   }, [])
 
   const process = useCallback(() => {
-    if (timeout.current) {
-      clearTimeout(timeout.current)
-      timeout.current = null
-    }
+    // if (timeout.current) {
+    //   clearTimeout(timeout.current)
+    //   timeout.current = null
+    // }
     if (!queue.current.length) {
       return
     }
@@ -221,9 +222,10 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
     const id = uuidv4()
     setRequestId(id)
     enqueue(id, route, parameters, selector)
-    if (options?.onComplete) {
+    if (options?.onComplete && typeof options.onComplete === 'function') {
       const onCompleteInterval = setInterval(() => {
         if (state[id]?.data || state[id]?.error) {
+          // @ts-ignore
           options.onComplete(state[id]?.data, state[id]?.error)
           clearInterval(onCompleteInterval)
         }

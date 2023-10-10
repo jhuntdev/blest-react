@@ -12,8 +12,8 @@ type BlestQueueItem = [string, string, any?, BlestSelector?];
 interface BlestContextValue {
     queue: MutableRefObject<BlestQueueItem[]>;
     state: BlestGlobalState;
-    enqueue: any;
-    ammend: any;
+    enqueue: (id: string, route: string, parameters?: any, selector?: BlestSelector) => void;
+    ammend: (id: string, data: any) => void;
 }
 export interface BlestProviderOptions {
     maxBatchSize?: number;
@@ -22,11 +22,11 @@ export interface BlestProviderOptions {
 }
 export interface BlestRequestOptions {
     skip?: boolean;
-    fetchMore?: any;
+    fetchMore?: (data: any) => void;
 }
 export interface BlestLazyRequestOptions {
     skip?: boolean;
-    onComplete?: any;
+    onComplete?: (oldData: any, newData: any) => void;
 }
 export declare const BlestProvider: ({ children, url, options }: {
     children: any;

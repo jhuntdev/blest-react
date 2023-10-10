@@ -64,7 +64,7 @@ var BlestProvider = function (_a) {
     var children = _a.children, url = _a.url, _b = _a.options, options = _b === void 0 ? {} : _b;
     var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
     var queue = (0, react_1.useRef)([]);
-    var timeout = (0, react_1.useRef)(null);
+    // const timeout = useRef<number | null>(null)
     var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
     var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 10;
     var headers = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
@@ -78,9 +78,10 @@ var BlestProvider = function (_a) {
             }, _a));
         });
         queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
-        if (!timeout.current) {
-            timeout.current = setTimeout(function () { process(); }, bufferDelay);
-        }
+        // if (!timeout.current) {
+        //   timeout.current = setTimeout(() => { process() }, bufferDelay)
+        // }
+        setTimeout(function () { process(); }, bufferDelay);
     }, []);
     var ammend = (0, react_1.useCallback)(function (id, data) {
         setState(function (state) {
@@ -89,10 +90,10 @@ var BlestProvider = function (_a) {
         });
     }, []);
     var process = (0, react_1.useCallback)(function () {
-        if (timeout.current) {
-            clearTimeout(timeout.current);
-            timeout.current = null;
-        }
+        // if (timeout.current) {
+        //   clearTimeout(timeout.current)
+        //   timeout.current = null
+        // }
         if (!queue.current.length) {
             return;
         }
@@ -222,10 +223,11 @@ var useBlestLazyRequest = function (route, selector, options) {
         var id = (0, uuid_1.v4)();
         setRequestId(id);
         enqueue(id, route, parameters, selector);
-        if (options === null || options === void 0 ? void 0 : options.onComplete) {
+        if ((options === null || options === void 0 ? void 0 : options.onComplete) && typeof options.onComplete === 'function') {
             var onCompleteInterval_1 = setInterval(function () {
                 var _a, _b, _c, _d;
                 if (((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) {
+                    // @ts-ignore
                     options.onComplete((_c = state[id]) === null || _c === void 0 ? void 0 : _c.data, (_d = state[id]) === null || _d === void 0 ? void 0 : _d.error);
                     clearInterval(onCompleteInterval_1);
                 }
