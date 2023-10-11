@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react'
 import { BlestProvider, useBlestLazyRequest, useBlestRequest } from 'blest-react'
 
 function App() {
+  const [headers, setHeaders] = useState()
+  useEffect(() => {
+    setHeaders({ 'Strange-Header': 'Unusual Value' })
+  }, [])
   return (
-    <BlestProvider url='http://localhost:8080'>
+    <BlestProvider url='http://localhost:8080' options={{ headers }}>
       <div>
         <h1 style={{ marginTop: 0 }}>BLEST React Example</h1>
         <hr />

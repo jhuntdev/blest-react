@@ -90,10 +90,8 @@ var BlestProvider = function (_a) {
     var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
     var queue = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
-    var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
-    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
-    var headers = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
     var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
+        var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
         setState(function (state) {
             var _a;
             return __assign(__assign({}, state), (_a = {}, _a[id] = {
@@ -104,10 +102,9 @@ var BlestProvider = function (_a) {
         });
         queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
         if (!timeout.current) {
-            timeout.current = setTimeout(function () { process(); }, bufferDelay);
+            timeout.current = setTimeout(process, bufferDelay);
         }
-        setTimeout(function () { process(); }, bufferDelay);
-    }, [bufferDelay]);
+    }, [options]);
     var ammend = (0, react_1.useCallback)(function (id, data) {
         setState(function (state) {
             var _a;
@@ -123,6 +120,8 @@ var BlestProvider = function (_a) {
         if (!queue.current.length) {
             return;
         }
+        var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
+        var headers = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
         var copyQueue = __spreadArray([], queue.current, true); // .map((q: BlestQueueItem) => [...q])
         queue.current = [];
         var batchCount = Math.ceil(copyQueue.length / maxBatchSize);
@@ -178,7 +177,7 @@ var BlestProvider = function (_a) {
         for (var i = 0; i < batchCount; i++) {
             _loop_1(i);
         }
-    }, [headers, maxBatchSize]);
+    }, [options]);
     return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue, ammend: ammend } }, children);
 };
 exports.BlestProvider = BlestProvider;
