@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject } from 'react'
+import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 interface BlestRequestState {
@@ -37,6 +37,35 @@ export interface BlestLazyRequestOptions {
   skip?: boolean
   onComplete?: (data: any, error: any) => void
 }
+
+type EventHandler<T> = (data: T) => void
+
+class EventEmitter<T> {
+  private events: { [key: string]: EventHandler<T>[] } = {}
+
+  on(eventName: string, handler: EventHandler<T>): void {
+    if (!this.events[eventName]) {
+      this.events[eventName] = []
+    }
+    this.events[eventName].push(handler)
+  }
+
+  off(eventName: string, handler: EventHandler<T>): void {
+    const eventHandlers = this.events[eventName]
+    if (eventHandlers) {
+      this.events[eventName] = eventHandlers.filter((h) => h !== handler)
+    }
+  }
+
+  emit(eventName: string, data: T): void {
+    const eventHandlers = this.events[eventName]
+    if (eventHandlers) {
+      eventHandlers.forEach((handler) => handler(data))
+    }
+  }
+}
+
+const emitter = new EventEmitter<any>();
 
 const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {}, ammend: () => {} })
 
@@ -95,20 +124,6 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     for (let i = 0; i < batchCount; i++) {
       const myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize)
       const requestIds = myQueue.map((q: BlestQueueItem) => q[0])
-      // setState((state: BlestGlobalState) => {
-      //   const newState = {
-      //     ...state
-      //   }
-      //   for (let i = 0; i < requestIds.length; i++) {
-      //     const id = requestIds[i]
-      //     newState[id] = {
-      //       loading: true,
-      //       error: null,
-      //       data: null
-      //     }
-      //   }
-      //   return newState
-      // })
       fetch(url, {
         body: JSON.stringify(myQueue),
         mode: 'cors',
@@ -127,6 +142,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
           }
           for (let i = 0; i < results.length; i++) {
             const item = results[i]
+            emitter.emit(item[0], { data: item[2], error: item[3] })
             newState[item[0]] = {
               loading: false,
               error: item[3],
@@ -143,9 +159,10 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
           }
           for (let i = 0; i < myQueue.length; i++) {
             const id = requestIds[i]
+            emitter.emit(id, { data: null, error })
             newState[id] = {
               loading: false,
-              error: error,
+              error,
               data: null
             }
           }
@@ -175,7 +192,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
   const { state, enqueue, ammend } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
-  const queryState = requestId && state[requestId]
+  const queryState = useMemo(() => requestId && state[requestId], [requestId && state[requestId]])
   const lastRequest = useRef<string | null>(null)
   const allRequestIds = useRef<string[]>([])
   const doneRequestIds = useRef<string[]>([])
@@ -194,16 +211,35 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   }, [route, parameters, selector, options, enqueue])
 
   const fetchMore = useCallback((parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
-    if (!requestId) return;
-    const id = uuidv4()
-    allRequestIds.current = [...allRequestIds.current, id]
-    callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
-    enqueue(id, route, parameters, selector)
+    return new Promise((resolve, reject) => {
+      if (!requestId) return reject()
+      const id = uuidv4()
+      allRequestIds.current = [...allRequestIds.current, id]
+      callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
+      enqueue(id, route, parameters, selector)
+      emitter.on(id, ({ data, error }) => {
+        if (error) {
+          reject(error)
+        } else if (data) {
+          resolve(data)
+        }
+      })
+    })
   }, [route, requestId])
 
   const refresh = useCallback(() => {
-    if (!requestId) return;
-    enqueue(requestId, route, parameters, selector)
+    return new Promise((resolve, reject) => {
+      const id = uuidv4()
+      setRequestId(id)
+      enqueue(id, route, parameters, selector)
+      emitter.on(id, ({ data, error }) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(data)
+        }
+      })
+    })
   }, [requestId, route, parameters, selector])
 
   useEffect(() => {
@@ -231,16 +267,25 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
-  const queryState = requestId && state[requestId]
+  const queryState = useMemo(() => requestId && state[requestId], [requestId && state[requestId]])
   const allRequestIds = useRef<string[]>([])
   const doneRequestIds = useRef<string[]>([])
 
   const request = useCallback((parameters?: any) => {
-    if (options?.skip) return;
-    const id = uuidv4()
-    setRequestId(id)
-    allRequestIds.current = [...allRequestIds.current, id]
-    enqueue(id, route, parameters, selector)
+    return new Promise((resolve, reject) => {
+      if (options?.skip) return reject()
+      const id = uuidv4()
+      setRequestId(id)
+      allRequestIds.current = [...allRequestIds.current, id]
+      enqueue(id, route, parameters, selector)
+      emitter.on(id, ({ data, error }) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(data)
+        }
+      })
+    })
   }, [route, selector, options, enqueue])
 
   useEffect(() => {
@@ -256,7 +301,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
     }
   }, [state, options])
 
-  return [request, queryState || { loading: true, error: null, data: null }]
+  return [request, queryState || { loading: false, error: null, data: null }]
 
 }
 
@@ -264,3 +309,5 @@ export const useBlestCommand = useBlestLazyRequest
 export const useLazyRequest = useBlestLazyRequest
 export const useRequest = useBlestRequest
 export const useCommand = useBlestCommand
+export const useQuery = useBlestRequest
+export const useLazyQuery = useBlestLazyRequest

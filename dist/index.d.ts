@@ -35,21 +35,29 @@ export declare const BlestProvider: ({ children, url, options }: {
 }) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>>;
 export declare const useBlestContext: () => BlestContextValue;
 export declare const useBlestRequest: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
-    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => void;
-    refresh: () => void;
+    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<unknown>;
+    refresh: () => Promise<unknown>;
     loading: boolean;
     error: any;
     data: any;
 };
-export declare const useBlestLazyRequest: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => void))[];
-export declare const useBlestCommand: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => void))[];
-export declare const useLazyRequest: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => void))[];
+export declare const useBlestLazyRequest: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => Promise<unknown>))[];
+export declare const useBlestCommand: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => Promise<unknown>))[];
+export declare const useLazyRequest: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => Promise<unknown>))[];
 export declare const useRequest: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
-    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => void;
-    refresh: () => void;
+    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<unknown>;
+    refresh: () => Promise<unknown>;
     loading: boolean;
     error: any;
     data: any;
 };
-export declare const useCommand: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => void))[];
+export declare const useCommand: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => Promise<unknown>))[];
+export declare const useQuery: (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
+    fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<unknown>;
+    refresh: () => Promise<unknown>;
+    loading: boolean;
+    error: any;
+    data: any;
+};
+export declare const useLazyQuery: (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => (BlestRequestState | ((parameters?: any) => Promise<unknown>))[];
 export {};

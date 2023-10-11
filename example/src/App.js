@@ -27,7 +27,7 @@ const Component1 = () => {
       (oldData, newData) => {
         return { ...newData, count: oldData?.count ? oldData.count + 1 : 1 }
       }
-    )
+    ).then(console.log.bind(null, 'fetchMore.then()')).catch(console.error.bind(null, 'fetchMore.catch()'))
   }
   return (
     <div>
@@ -42,7 +42,7 @@ const Component2 = () => {
   const [name, setName] = useState('Steve')
   const [greet, { data, error, loading }] = useBlestLazyRequest('greet', null)
   useEffect(() => {
-    greet({ name })
+    greet({ name }).then(console.log.bind(null, 'greet.then()')).catch(console.error.bind(null, 'greet.catch()'))
   }, [greet, name])
   return (
     <div>
