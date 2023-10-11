@@ -107,7 +107,7 @@ var BlestProvider = function (_a) {
             timeout.current = setTimeout(function () { process(); }, bufferDelay);
         }
         setTimeout(function () { process(); }, bufferDelay);
-    }, []);
+    }, [bufferDelay]);
     var ammend = (0, react_1.useCallback)(function (id, data) {
         setState(function (state) {
             var _a;
@@ -178,7 +178,7 @@ var BlestProvider = function (_a) {
         for (var i = 0; i < batchCount; i++) {
             _loop_1(i);
         }
-    }, []);
+    }, [headers, maxBatchSize]);
     return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue, ammend: ammend } }, children);
 };
 exports.BlestProvider = BlestProvider;

@@ -95,7 +95,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
       timeout.current = setTimeout(() => { process() }, bufferDelay)
     }
     setTimeout(() => { process() }, bufferDelay)
-  }, [])
+  }, [bufferDelay])
 
   const ammend = useCallback((id: string, data: any) => {
     setState((state) => {
@@ -170,7 +170,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         })
       })
     }
-  }, [])
+  }, [headers, maxBatchSize])
 
   return createElement(BlestContext.Provider, { value: { queue, state, enqueue, ammend }}, children)
 
