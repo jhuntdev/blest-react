@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, useMemo } from 'react'
+import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, useMemo, FC, ComponentClass } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 interface BlestRequestState {
@@ -30,7 +30,7 @@ export interface BlestProviderOptions {
 
 export interface BlestRequestOptions {
   skip?: boolean
-  fetchMore?: (parameters: any, mergeFunction: (oldData: any, newData: any) => any) => void
+  fetchMore?: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => void
 }
 
 export interface BlestLazyRequestOptions {
@@ -174,6 +174,10 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
 
 }
 
+export const withBlest = (Component: FC | ComponentClass, url: string, options?: BlestProviderOptions) => {
+  return (props?: any) => createElement(BlestProvider, { url, options, children: createElement(Component, props) })
+}
+
 export const useBlestContext = () => {
 
   const context = useContext(BlestContext)
@@ -186,7 +190,12 @@ export const useBlestContext = () => {
 
 }
 
-export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions) => {
+interface BlestRequestHookReturn extends BlestRequestState {
+  fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<any>,
+  refresh: () => Promise<any>
+}
+
+export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions): BlestRequestHookReturn => {
 
   const { state, enqueue, ammend } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -261,7 +270,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
 }
 
-export const useBlestLazyRequest = (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions) => {
+export const useBlestLazyRequest = (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions): [(parameters?: any) => Promise<any>, BlestRequestState] => {
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -303,9 +312,9 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
 
 }
 
-export const useBlestCommand = useBlestLazyRequest
-export const useLazyRequest = useBlestLazyRequest
 export const useRequest = useBlestRequest
-export const useCommand = useBlestCommand
-export const useQuery = useBlestRequest
-export const useLazyQuery = useBlestLazyRequest
+export const useLazyRequest = useBlestLazyRequest
+// export const useBlestCommand = useBlestLazyRequest
+// export const useCommand = useBlestCommand
+// export const useQuery = useBlestRequest
+// export const useLazyQuery = useBlestLazyRequest
