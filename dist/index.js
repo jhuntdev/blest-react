@@ -56,7 +56,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useLazyQuery = exports.useQuery = exports.useCommand = exports.useRequest = exports.useLazyRequest = exports.useBlestCommand = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.BlestProvider = void 0;
+exports.useLazyRequest = exports.useRequest = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.withBlest = exports.BlestProvider = void 0;
 var react_1 = require("react");
 var uuid_1 = require("uuid");
 var EventEmitter = /** @class */ (function () {
@@ -181,6 +181,10 @@ var BlestProvider = function (_a) {
     return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue, ammend: ammend } }, children);
 };
 exports.BlestProvider = BlestProvider;
+var withBlest = function (Component, url, options) {
+    return function (props) { return (0, react_1.createElement)(exports.BlestProvider, { url: url, options: options, children: (0, react_1.createElement)(Component, props) }); };
+};
+exports.withBlest = withBlest;
 var useBlestContext = function () {
     var context = (0, react_1.useContext)(BlestContext);
     (0, react_1.useEffect)(function () {
@@ -303,9 +307,9 @@ var useBlestLazyRequest = function (route, selector, options) {
     return [request, queryState || { loading: false, error: null, data: null }];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
-exports.useBlestCommand = exports.useBlestLazyRequest;
-exports.useLazyRequest = exports.useBlestLazyRequest;
 exports.useRequest = exports.useBlestRequest;
-exports.useCommand = exports.useBlestCommand;
-exports.useQuery = exports.useBlestRequest;
-exports.useLazyQuery = exports.useBlestLazyRequest;
+exports.useLazyRequest = exports.useBlestLazyRequest;
+// export const useBlestCommand = useBlestLazyRequest
+// export const useCommand = useBlestCommand
+// export const useQuery = useBlestRequest
+// export const useLazyQuery = useBlestLazyRequest
