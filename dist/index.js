@@ -212,7 +212,7 @@ var useBlestRequest = function (route, parameters, selector, options) {
             allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
             enqueue(id, route, parameters, selector);
         }
-    }, [route, parameters, selector, options, enqueue]);
+    }, [route, parameters, selector, options]);
     var fetchMore = (0, react_1.useCallback)(function (parameters, mergeFunction) {
         return new Promise(function (resolve, reject) {
             var _a;
@@ -290,7 +290,7 @@ var useBlestLazyRequest = function (route, selector, options) {
                 }
             });
         });
-    }, [route, selector, options, enqueue]);
+    }, [route, selector, options]);
     (0, react_1.useEffect)(function () {
         var _a, _b;
         for (var i = 0; i < allRequestIds.current.length; i++) {
