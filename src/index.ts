@@ -94,7 +94,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   }, [options])
 
   const ammend = useCallback((id: string, data: any) => {
-    setState((state) => {
+    setState((state:BlestGlobalState) => {
       const newState = {
         ...state,
         [id]: {
@@ -215,7 +215,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
       allRequestIds.current = [...allRequestIds.current, id]
       enqueue(id, route, parameters, selector)
     }
-  }, [route, parameters, selector, options, enqueue])
+  }, [route, parameters, selector, options])
 
   const fetchMore = useCallback((parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
     return new Promise((resolve, reject) => {
@@ -293,7 +293,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
         }
       })
     })
-  }, [route, selector, options, enqueue])
+  }, [route, selector, options])
 
   useEffect(() => {
     for (let i = 0; i < allRequestIds.current.length; i++) {
