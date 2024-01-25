@@ -219,7 +219,11 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
   const fetchMore = useCallback((parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
     return new Promise((resolve, reject) => {
-      if (!requestId) return reject()
+      if (
+        options?.skip ||
+        !requestId ||
+        doneRequestIds.current.indexOf(requestId) === -1
+      ) return resolve(null)
       const id = uuidv4()
       allRequestIds.current = [...allRequestIds.current, id]
       callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
@@ -236,6 +240,11 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
   const refresh = useCallback(() => {
     return new Promise((resolve, reject) => {
+      if (
+        options?.skip ||
+        !requestId ||
+        doneRequestIds.current.indexOf(requestId) === -1
+      ) return resolve(null)
       const id = uuidv4()
       setRequestId(id)
       enqueue(id, route, parameters, selector)

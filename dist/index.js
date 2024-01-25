@@ -216,8 +216,10 @@ var useBlestRequest = function (route, parameters, selector, options) {
     var fetchMore = (0, react_1.useCallback)(function (parameters, mergeFunction) {
         return new Promise(function (resolve, reject) {
             var _a;
-            if (!requestId)
-                return reject();
+            if ((options === null || options === void 0 ? void 0 : options.skip) ||
+                !requestId ||
+                doneRequestIds.current.indexOf(requestId) === -1)
+                return resolve(null);
             var id = (0, uuid_1.v4)();
             allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
             callbacksById.current = __assign(__assign({}, callbacksById.current), (_a = {}, _a[id] = mergeFunction, _a));
@@ -235,6 +237,10 @@ var useBlestRequest = function (route, parameters, selector, options) {
     }, [route, requestId]);
     var refresh = (0, react_1.useCallback)(function () {
         return new Promise(function (resolve, reject) {
+            if ((options === null || options === void 0 ? void 0 : options.skip) ||
+                !requestId ||
+                doneRequestIds.current.indexOf(requestId) === -1)
+                return resolve(null);
             var id = (0, uuid_1.v4)();
             setRequestId(id);
             enqueue(id, route, parameters, selector);
