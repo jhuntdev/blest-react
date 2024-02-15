@@ -132,8 +132,27 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
           "Accept": "application/json"
         }
       })
-      .then(async (result) => {
-        const results = await result.json()
+      .then(async (response) => {
+        const results = await response.json()
+        if (!response.ok) {
+          const error = results || { status: response.status, message: response.statusText || 'Network error' } 
+          setState((state: BlestGlobalState) => {
+            const newState = {
+              ...state
+            }
+            for (let i = 0; i < myQueue.length; i++) {
+              const id = requestIds[i]
+              emitter.emit(id, { data: null, error })
+              newState[id] = {
+                loading: false,
+                error,
+                data: null
+              }
+            }
+            return newState
+          })
+          return;
+        }
         setState((state: BlestGlobalState) => {
           const newState = {
             ...state
@@ -150,7 +169,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
           return newState
         })
       })
-      .catch((error) => {
+      .catch((error):void => {
         setState((state: BlestGlobalState) => {
           const newState = {
             ...state
@@ -310,7 +329,6 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
       if ((state[id]?.data || state[id]?.error) && doneRequestIds.current.indexOf(id) === -1) {
         doneRequestIds.current = [...doneRequestIds.current, id]
         if (options?.onComplete && typeof options.onComplete === 'function') {
-          // @ts-ignore
           options.onComplete(state[id].data, state[id].error)
         }
       }
@@ -323,7 +341,5 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
 
 export const useRequest = useBlestRequest
 export const useLazyRequest = useBlestLazyRequest
-// export const useBlestCommand = useBlestLazyRequest
-// export const useCommand = useBlestCommand
 // export const useQuery = useBlestRequest
 // export const useLazyQuery = useBlestLazyRequest

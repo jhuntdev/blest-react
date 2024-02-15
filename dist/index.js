@@ -134,17 +134,34 @@ var BlestProvider = function (_a) {
                 method: 'POST',
                 headers: __assign(__assign({}, headers), { "Content-Type": "application/json", "Accept": "application/json" })
             })
-                .then(function (result) { return __awaiter(void 0, void 0, void 0, function () {
-                var results;
+                .then(function (response) { return __awaiter(void 0, void 0, void 0, function () {
+                var results, error_1;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
-                        case 0: return [4 /*yield*/, result.json()];
+                        case 0: return [4 /*yield*/, response.json()];
                         case 1:
                             results = _a.sent();
+                            if (!response.ok) {
+                                error_1 = results || { status: response.status, message: response.statusText || 'Network error' };
+                                setState(function (state) {
+                                    var newState = __assign({}, state);
+                                    for (var i_1 = 0; i_1 < myQueue.length; i_1++) {
+                                        var id = requestIds[i_1];
+                                        emitter.emit(id, { data: null, error: error_1 });
+                                        newState[id] = {
+                                            loading: false,
+                                            error: error_1,
+                                            data: null
+                                        };
+                                    }
+                                    return newState;
+                                });
+                                return [2 /*return*/];
+                            }
                             setState(function (state) {
                                 var newState = __assign({}, state);
-                                for (var i_1 = 0; i_1 < results.length; i_1++) {
-                                    var item = results[i_1];
+                                for (var i_2 = 0; i_2 < results.length; i_2++) {
+                                    var item = results[i_2];
                                     emitter.emit(item[0], { data: item[2], error: item[3] });
                                     newState[item[0]] = {
                                         loading: false,
@@ -161,8 +178,8 @@ var BlestProvider = function (_a) {
                 .catch(function (error) {
                 setState(function (state) {
                     var newState = __assign({}, state);
-                    for (var i_2 = 0; i_2 < myQueue.length; i_2++) {
-                        var id = requestIds[i_2];
+                    for (var i_3 = 0; i_3 < myQueue.length; i_3++) {
+                        var id = requestIds[i_3];
                         emitter.emit(id, { data: null, error: error });
                         newState[id] = {
                             loading: false,
@@ -304,7 +321,6 @@ var useBlestLazyRequest = function (route, selector, options) {
             if ((((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) && doneRequestIds.current.indexOf(id) === -1) {
                 doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
                 if ((options === null || options === void 0 ? void 0 : options.onComplete) && typeof options.onComplete === 'function') {
-                    // @ts-ignore
                     options.onComplete(state[id].data, state[id].error);
                 }
             }
@@ -315,7 +331,5 @@ var useBlestLazyRequest = function (route, selector, options) {
 exports.useBlestLazyRequest = useBlestLazyRequest;
 exports.useRequest = exports.useBlestRequest;
 exports.useLazyRequest = exports.useBlestLazyRequest;
-// export const useBlestCommand = useBlestLazyRequest
-// export const useCommand = useBlestCommand
 // export const useQuery = useBlestRequest
 // export const useLazyQuery = useBlestLazyRequest
