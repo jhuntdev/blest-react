@@ -73,23 +73,28 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
+  const hashes = useRef<any[]>([])
   const timeout = useRef<number | null>(null)
 
   const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
     const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-    setState((state: BlestGlobalState) => {
-      return {
-        ...state,
-        [id]: {
-          loading: true,
-          error: null,
-          data: null
+    const hash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || [])
+    if (hashes.current.indexOf(hash) === -1) {
+      hashes.current = [...hashes.current, hash]
+      setState((state: BlestGlobalState) => {
+        return {
+          ...state,
+          [id]: {
+            loading: true,
+            error: null,
+            data: null
+          }
         }
+      })
+      queue.current = [...queue.current, [id, route, parameters, selector]]
+      if (!timeout.current) {
+        timeout.current = setTimeout(process, bufferDelay)
       }
-    })
-    queue.current = [...queue.current, [id, route, parameters, selector]]
-    if (!timeout.current) {
-      timeout.current = setTimeout(process, bufferDelay)
     }
   }, [options])
 
@@ -226,7 +231,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
   useEffect(() => {
     if (options?.skip) return;
-    const requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || {})
+    const requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || []) + JSON.stringify(options || {})
     if (lastRequest.current !== requestHash) {
       lastRequest.current = requestHash
       const id = uuidv4()
