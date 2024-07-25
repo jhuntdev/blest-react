@@ -89,28 +89,20 @@ var BlestProvider = function (_a) {
     var children = _a.children, url = _a.url, _b = _a.options, options = _b === void 0 ? {} : _b;
     var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
     var queue = (0, react_1.useRef)([]);
-    var hashes = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
     var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
         var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
-        var hash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || []);
-        if (hashes.current.indexOf(hash) === -1) {
-            hashes.current = __spreadArray(__spreadArray([], hashes.current, true), [hash], false);
-            setState(function (state) {
-                var _a;
-                return __assign(__assign({}, state), (_a = {}, _a[id] = {
-                    loading: true,
-                    error: null,
-                    data: null
-                }, _a));
-            });
-            queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
-            if (!timeout.current) {
-                timeout.current = setTimeout(process, bufferDelay);
-            }
-        }
-        else {
-            console.log('Ignored duplicate request', route, parameters, selector);
+        setState(function (state) {
+            var _a;
+            return __assign(__assign({}, state), (_a = {}, _a[id] = {
+                loading: true,
+                error: null,
+                data: null
+            }, _a));
+        });
+        queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
+        if (!timeout.current) {
+            timeout.current = setTimeout(process, bufferDelay);
         }
     }, [options]);
     var ammend = (0, react_1.useCallback)(function (id, data) {
@@ -149,12 +141,27 @@ var BlestProvider = function (_a) {
                         case 0: return [4 /*yield*/, response.json()];
                         case 1:
                             results = _a.sent();
-                            if (!response.ok) {
+                            if (response.ok) {
+                                setState(function (state) {
+                                    var newState = __assign({}, state);
+                                    for (var i_1 = 0; i_1 < results.length; i_1++) {
+                                        var item = results[i_1];
+                                        emitter.emit(item[0], { data: item[2], error: item[3] });
+                                        newState[item[0]] = {
+                                            loading: false,
+                                            error: item[3],
+                                            data: item[2]
+                                        };
+                                    }
+                                    return newState;
+                                });
+                            }
+                            else {
                                 error_1 = results || { status: response.status, message: response.statusText || 'Network error' };
                                 setState(function (state) {
                                     var newState = __assign({}, state);
-                                    for (var i_1 = 0; i_1 < myQueue.length; i_1++) {
-                                        var id = requestIds[i_1];
+                                    for (var i_2 = 0; i_2 < requestIds.length; i_2++) {
+                                        var id = requestIds[i_2];
                                         emitter.emit(id, { data: null, error: error_1 });
                                         newState[id] = {
                                             loading: false,
@@ -164,21 +171,7 @@ var BlestProvider = function (_a) {
                                     }
                                     return newState;
                                 });
-                                return [2 /*return*/];
                             }
-                            setState(function (state) {
-                                var newState = __assign({}, state);
-                                for (var i_2 = 0; i_2 < results.length; i_2++) {
-                                    var item = results[i_2];
-                                    emitter.emit(item[0], { data: item[2], error: item[3] });
-                                    newState[item[0]] = {
-                                        loading: false,
-                                        error: item[3],
-                                        data: item[2]
-                                    };
-                                }
-                                return newState;
-                            });
                             return [2 /*return*/];
                     }
                 });
@@ -186,7 +179,7 @@ var BlestProvider = function (_a) {
                 .catch(function (error) {
                 setState(function (state) {
                     var newState = __assign({}, state);
-                    for (var i_3 = 0; i_3 < myQueue.length; i_3++) {
+                    for (var i_3 = 0; i_3 < requestIds.length; i_3++) {
                         var id = requestIds[i_3];
                         emitter.emit(id, { data: null, error: error });
                         newState[id] = {

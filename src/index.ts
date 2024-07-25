@@ -73,28 +73,23 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
-  const hashes = useRef<any[]>([])
   const timeout = useRef<number | null>(null)
 
   const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
     const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-    const hash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || [])
-    if (hashes.current.indexOf(hash) === -1) {
-      hashes.current = [...hashes.current, hash]
-      setState((state: BlestGlobalState) => {
-        return {
-          ...state,
-          [id]: {
-            loading: true,
-            error: null,
-            data: null
-          }
+    setState((state: BlestGlobalState) => {
+      return {
+        ...state,
+        [id]: {
+          loading: true,
+          error: null,
+          data: null
         }
-      })
-      queue.current = [...queue.current, [id, route, parameters, selector]]
-      if (!timeout.current) {
-        timeout.current = setTimeout(process, bufferDelay)
       }
+    })
+    queue.current = [...queue.current, [id, route, parameters, selector]]
+    if (!timeout.current) {
+      timeout.current = setTimeout(process, bufferDelay)
     }
   }, [options])
 
@@ -139,13 +134,29 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
       })
       .then(async (response) => {
         const results = await response.json()
-        if (!response.ok) {
+        if (response.ok) {
+          setState((state: BlestGlobalState) => {
+            const newState = {
+              ...state
+            }
+            for (let i = 0; i < results.length; i++) {
+              const item = results[i]
+              emitter.emit(item[0], { data: item[2], error: item[3] })
+              newState[item[0]] = {
+                loading: false,
+                error: item[3],
+                data: item[2]
+              }
+            }
+            return newState
+          })
+        } else {
           const error = results || { status: response.status, message: response.statusText || 'Network error' } 
           setState((state: BlestGlobalState) => {
             const newState = {
               ...state
             }
-            for (let i = 0; i < myQueue.length; i++) {
+            for (let i = 0; i < requestIds.length; i++) {
               const id = requestIds[i]
               emitter.emit(id, { data: null, error })
               newState[id] = {
@@ -156,30 +167,14 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
             }
             return newState
           })
-          return;
         }
-        setState((state: BlestGlobalState) => {
-          const newState = {
-            ...state
-          }
-          for (let i = 0; i < results.length; i++) {
-            const item = results[i]
-            emitter.emit(item[0], { data: item[2], error: item[3] })
-            newState[item[0]] = {
-              loading: false,
-              error: item[3],
-              data: item[2]
-            }
-          }
-          return newState
-        })
       })
       .catch((error):void => {
         setState((state: BlestGlobalState) => {
           const newState = {
             ...state
           }
-          for (let i = 0; i < myQueue.length; i++) {
+          for (let i = 0; i < requestIds.length; i++) {
             const id = requestIds[i]
             emitter.emit(id, { data: null, error })
             newState[id] = {
