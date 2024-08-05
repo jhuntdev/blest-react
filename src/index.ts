@@ -74,9 +74,13 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
   const timeout = useRef<number | null>(null)
+  const headers = useRef<any | null>(null)
+  headers.current = options?.headers && typeof options.headers === 'object' ? options.headers : {}
+  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
+  const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
 
   const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
-    const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
+    // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
     setState((state: BlestGlobalState) => {
       return {
         ...state,
@@ -114,8 +118,8 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
     if (!queue.current.length) {
       return
     }
-    const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
-    const headers = options?.headers && typeof options.headers === 'object' ? options.headers : {}
+    // const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
+    // const headers = options?.headers && typeof options.headers === 'object' ? options.headers : {}
     const copyQueue: BlestQueueItem[] = [...queue.current] // .map((q: BlestQueueItem) => [...q])
     queue.current = []
     const batchCount = Math.ceil(copyQueue.length / maxBatchSize)
@@ -127,7 +131,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         mode: 'cors',
         method: 'POST',
         headers: {
-          ...headers,
+          ...headers.current,
           "Content-Type": "application/json",
           "Accept": "application/json"
         }
@@ -187,7 +191,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         })
       })
     }
-  }, [options])
+  }, [headers, maxBatchSize, bufferDelay])
 
   return createElement(BlestContext.Provider, { value: { queue, state, enqueue, ammend }}, children)
 
