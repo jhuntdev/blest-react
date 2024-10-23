@@ -75,9 +75,9 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   const queue = useRef<BlestQueueItem[]>([])
   const timeout = useRef<number | null>(null)
   const headers = useRef<any | null>(null)
-  headers.current = options?.headers && typeof options.headers === 'object' ? options.headers : {}
-  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-  const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
+  headers.current = options && options.headers && typeof options.headers === 'object' ? options.headers : {}
+  const bufferDelay = options && options.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
+  const maxBatchSize = options && options.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
 
   const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
     // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
@@ -218,7 +218,7 @@ interface BlestRequestHookReturn extends BlestRequestState {
   refresh: () => Promise<any>
 }
 
-export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector, options?: BlestRequestOptions): BlestRequestHookReturn => {
+export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector|null|false, options?: BlestRequestOptions): BlestRequestHookReturn => {
 
   const { state, enqueue, ammend } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -229,7 +229,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   const callbacksById = useRef<any>({})
 
   useEffect(() => {
-    if (options?.skip) return;
+    if (options && options.skip) return;
     const requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || []) + JSON.stringify(options || {})
     if (lastRequest.current !== requestHash) {
       lastRequest.current = requestHash
@@ -243,7 +243,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   const fetchMore = useCallback((parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
     return new Promise((resolve, reject) => {
       if (
-        options?.skip ||
+        (options && options.skip) ||
         !requestId ||
         doneRequestIds.current.indexOf(requestId) === -1
       ) return resolve(null)
@@ -264,7 +264,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   const refresh = useCallback(() => {
     return new Promise((resolve, reject) => {
       if (
-        options?.skip ||
+        (options && options.skip) ||
         !requestId ||
         doneRequestIds.current.indexOf(requestId) === -1
       ) return resolve(null)
@@ -285,7 +285,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
     if (!requestId) return;
     for (let i = 0; i < allRequestIds.current.length; i++) {
       const id = allRequestIds.current[i]
-      if ((state[id]?.data || state[id]?.error) && doneRequestIds.current.indexOf(id) === -1) {
+      if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
         doneRequestIds.current = [...doneRequestIds.current, id]
         if (state[id].data && typeof callbacksById.current[id] === 'function') {
           ammend(requestId, callbacksById.current[id](requestId ? state[requestId]?.data || {} : {}, state[id].data))
@@ -302,7 +302,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
 }
 
-export const useBlestLazyRequest = (route: string, selector?: BlestSelector, options?: BlestLazyRequestOptions): [(parameters?: any) => Promise<any>, BlestRequestState] => {
+export const useBlestLazyRequest = (route: string, selector?: BlestSelector|null|false, options?: BlestLazyRequestOptions): [(parameters?: any) => Promise<any>, BlestRequestState] => {
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -312,7 +312,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
 
   const request = useCallback((parameters?: any) => {
     return new Promise((resolve, reject) => {
-      if (options?.skip) return reject()
+      if (options && options.skip) return reject()
       const id = uuidv4()
       setRequestId(id)
       allRequestIds.current = [...allRequestIds.current, id]
@@ -330,9 +330,9 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector, opt
   useEffect(() => {
     for (let i = 0; i < allRequestIds.current.length; i++) {
       const id = allRequestIds.current[i]
-      if ((state[id]?.data || state[id]?.error) && doneRequestIds.current.indexOf(id) === -1) {
+      if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
         doneRequestIds.current = [...doneRequestIds.current, id]
-        if (options?.onComplete && typeof options.onComplete === 'function') {
+        if (options && options.onComplete && typeof options.onComplete === 'function') {
           options.onComplete(state[id].data, state[id].error)
         }
       }

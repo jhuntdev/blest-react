@@ -91,9 +91,9 @@ var BlestProvider = function (_a) {
     var queue = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
     var headers = (0, react_1.useRef)(null);
-    headers.current = (options === null || options === void 0 ? void 0 : options.headers) && typeof options.headers === 'object' ? options.headers : {};
-    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
-    var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
+    headers.current = options && options.headers && typeof options.headers === 'object' ? options.headers : {};
+    var bufferDelay = options && options.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
+    var maxBatchSize = options && options.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
     var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
         // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
         setState(function (state) {
@@ -224,7 +224,7 @@ var useBlestRequest = function (route, parameters, selector, options) {
     var doneRequestIds = (0, react_1.useRef)([]);
     var callbacksById = (0, react_1.useRef)({});
     (0, react_1.useEffect)(function () {
-        if (options === null || options === void 0 ? void 0 : options.skip)
+        if (options && options.skip)
             return;
         var requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || []) + JSON.stringify(options || {});
         if (lastRequest.current !== requestHash) {
@@ -238,7 +238,7 @@ var useBlestRequest = function (route, parameters, selector, options) {
     var fetchMore = (0, react_1.useCallback)(function (parameters, mergeFunction) {
         return new Promise(function (resolve, reject) {
             var _a;
-            if ((options === null || options === void 0 ? void 0 : options.skip) ||
+            if ((options && options.skip) ||
                 !requestId ||
                 doneRequestIds.current.indexOf(requestId) === -1)
                 return resolve(null);
@@ -259,7 +259,7 @@ var useBlestRequest = function (route, parameters, selector, options) {
     }, [route, requestId]);
     var refresh = (0, react_1.useCallback)(function () {
         return new Promise(function (resolve, reject) {
-            if ((options === null || options === void 0 ? void 0 : options.skip) ||
+            if ((options && options.skip) ||
                 !requestId ||
                 doneRequestIds.current.indexOf(requestId) === -1)
                 return resolve(null);
@@ -278,15 +278,15 @@ var useBlestRequest = function (route, parameters, selector, options) {
         });
     }, [requestId, route, parameters, selector]);
     (0, react_1.useEffect)(function () {
-        var _a, _b, _c;
+        var _a;
         if (!requestId)
             return;
         for (var i = 0; i < allRequestIds.current.length; i++) {
             var id = allRequestIds.current[i];
-            if ((((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) && doneRequestIds.current.indexOf(id) === -1) {
+            if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
                 doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
                 if (state[id].data && typeof callbacksById.current[id] === 'function') {
-                    ammend(requestId, callbacksById.current[id](requestId ? ((_c = state[requestId]) === null || _c === void 0 ? void 0 : _c.data) || {} : {}, state[id].data));
+                    ammend(requestId, callbacksById.current[id](requestId ? ((_a = state[requestId]) === null || _a === void 0 ? void 0 : _a.data) || {} : {}, state[id].data));
                 }
             }
         }
@@ -302,7 +302,7 @@ var useBlestLazyRequest = function (route, selector, options) {
     var doneRequestIds = (0, react_1.useRef)([]);
     var request = (0, react_1.useCallback)(function (parameters) {
         return new Promise(function (resolve, reject) {
-            if (options === null || options === void 0 ? void 0 : options.skip)
+            if (options && options.skip)
                 return reject();
             var id = (0, uuid_1.v4)();
             setRequestId(id);
@@ -320,12 +320,11 @@ var useBlestLazyRequest = function (route, selector, options) {
         });
     }, [route, selector, options]);
     (0, react_1.useEffect)(function () {
-        var _a, _b;
         for (var i = 0; i < allRequestIds.current.length; i++) {
             var id = allRequestIds.current[i];
-            if ((((_a = state[id]) === null || _a === void 0 ? void 0 : _a.data) || ((_b = state[id]) === null || _b === void 0 ? void 0 : _b.error)) && doneRequestIds.current.indexOf(id) === -1) {
+            if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
                 doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
-                if ((options === null || options === void 0 ? void 0 : options.onComplete) && typeof options.onComplete === 'function') {
+                if (options && options.onComplete && typeof options.onComplete === 'function') {
                     options.onComplete(state[id].data, state[id].error);
                 }
             }
