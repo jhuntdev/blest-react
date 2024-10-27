@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, useMemo, FC, ComponentClass } from 'react'
-import { v4 as uuidv4 } from 'uuid'
+import { v1 as uuid } from 'uuid'
 
 interface BlestRequestState {
   loading: boolean;
@@ -231,7 +231,7 @@ export const useBlestRequest = (route: string, body?: any, headers?: any, option
     const requestHash = route + JSON.stringify(body || {}) + JSON.stringify(headers || {}) + JSON.stringify(options || {})
     if (lastRequest.current !== requestHash) {
       lastRequest.current = requestHash
-      const id = uuidv4()
+      const id = uuid()
       setRequestId(id)
       allRequestIds.current = [...allRequestIds.current, id]
       enqueue(id, route, body, headers)
@@ -245,7 +245,7 @@ export const useBlestRequest = (route: string, body?: any, headers?: any, option
         !requestId ||
         doneRequestIds.current.indexOf(requestId) === -1
       ) return resolve(null)
-      const id = uuidv4()
+      const id = uuid()
       allRequestIds.current = [...allRequestIds.current, id]
       callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
       enqueue(id, route, body, headers)
@@ -266,7 +266,7 @@ export const useBlestRequest = (route: string, body?: any, headers?: any, option
         !requestId ||
         doneRequestIds.current.indexOf(requestId) === -1
       ) return resolve(null)
-      const id = uuidv4()
+      const id = uuid()
       setRequestId(id)
       enqueue(id, route, body, headers)
       emitter.on(id, ({ data, error }) => {
@@ -311,7 +311,7 @@ export const useBlestLazyRequest = (route: string, headers?: any, options?: Bles
   const request = useCallback((body?: any) => {
     return new Promise((resolve, reject) => {
       if (options?.skip) return reject()
-      const id = uuidv4()
+      const id = uuid()
       setRequestId(id)
       allRequestIds.current = [...allRequestIds.current, id]
       enqueue(id, route, body, headers)
