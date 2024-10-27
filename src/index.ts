@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, useMemo, FC, ComponentClass } from 'react'
-import { v4 as uuidv4 } from 'uuid'
+import { v1 as uuid } from 'uuid'
 
 interface BlestRequestState {
   loading: boolean;
@@ -11,26 +11,24 @@ interface BlestGlobalState {
   [id: string]: BlestRequestState;
 }
 
-export type BlestSelector = Array<string | BlestSelector>
-
-type BlestQueueItem = [string, string, any?, BlestSelector?]
+type BlestQueueItem = [string, string, any?, any?]
 
 interface BlestContextValue {
   queue: MutableRefObject<BlestQueueItem[]>,
   state: BlestGlobalState,
-  enqueue: (id: string, route: string, parameters?: any, selector?: BlestSelector) => void
+  enqueue: (id: string, route: string, body?: any, headers?: any) => void
   ammend: (id: string, data: any) => void
 }
 
 export interface BlestProviderOptions {
   maxBatchSize?: number
   bufferDelay?: number
-  headers?: any
+  httpHeaders?: any
 }
 
 export interface BlestRequestOptions {
   skip?: boolean
-  fetchMore?: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => void
+  fetchMore?: (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => void
 }
 
 export interface BlestLazyRequestOptions {
@@ -74,12 +72,12 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
   const timeout = useRef<number | null>(null)
-  const headers = useRef<any | null>(null)
-  headers.current = options && options.headers && typeof options.headers === 'object' ? options.headers : {}
-  const bufferDelay = options && options.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-  const maxBatchSize = options && options.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
+  const httpHeaders = useRef<any | null>(null)
+  httpHeaders.current = options?.httpHeaders && typeof options.httpHeaders === 'object' ? options.httpHeaders : {}
+  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
+  const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
 
-  const enqueue = useCallback((id: string, route: string, parameters?: any, selector?: BlestSelector) => {
+  const enqueue = useCallback((id: string, route: string, body?: any, headers?: any) => {
     // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
     setState((state: BlestGlobalState) => {
       return {
@@ -91,7 +89,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         }
       }
     })
-    queue.current = [...queue.current, [id, route, parameters, selector]]
+    queue.current = [...queue.current, [id, route, body, headers]]
     if (!timeout.current) {
       timeout.current = setTimeout(process, bufferDelay)
     }
@@ -131,7 +129,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         mode: 'cors',
         method: 'POST',
         headers: {
-          ...headers.current,
+          ...httpHeaders.current,
           "Content-Type": "application/json",
           "Accept": "application/json"
         }
@@ -191,7 +189,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
         })
       })
     }
-  }, [headers, maxBatchSize, bufferDelay])
+  }, [httpHeaders, maxBatchSize, bufferDelay])
 
   return createElement(BlestContext.Provider, { value: { queue, state, enqueue, ammend }}, children)
 
@@ -214,11 +212,11 @@ export const useBlestContext = () => {
 }
 
 interface BlestRequestHookReturn extends BlestRequestState {
-  fetchMore: (parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<any>,
+  fetchMore: (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<any>,
   refresh: () => Promise<any>
 }
 
-export const useBlestRequest = (route: string, parameters?: any, selector?: BlestSelector|null|false, options?: BlestRequestOptions): BlestRequestHookReturn => {
+export const useBlestRequest = (route: string, body?: any, headers?: any, options?: BlestRequestOptions): BlestRequestHookReturn => {
 
   const { state, enqueue, ammend } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -229,28 +227,28 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
   const callbacksById = useRef<any>({})
 
   useEffect(() => {
-    if (options && options.skip) return;
-    const requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || []) + JSON.stringify(options || {})
+    if (options?.skip) return;
+    const requestHash = route + JSON.stringify(body || {}) + JSON.stringify(headers || {}) + JSON.stringify(options || {})
     if (lastRequest.current !== requestHash) {
       lastRequest.current = requestHash
-      const id = uuidv4()
+      const id = uuid()
       setRequestId(id)
       allRequestIds.current = [...allRequestIds.current, id]
-      enqueue(id, route, parameters, selector)
+      enqueue(id, route, body, headers)
     }
-  }, [route, parameters, selector, options])
+  }, [route, body, headers, options])
 
-  const fetchMore = useCallback((parameters: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
+  const fetchMore = useCallback((body: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
     return new Promise((resolve, reject) => {
       if (
         (options && options.skip) ||
         !requestId ||
         doneRequestIds.current.indexOf(requestId) === -1
       ) return resolve(null)
-      const id = uuidv4()
+      const id = uuid()
       allRequestIds.current = [...allRequestIds.current, id]
       callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
-      enqueue(id, route, parameters, selector)
+      enqueue(id, route, body, headers)
       emitter.on(id, ({ data, error }) => {
         if (error) {
           reject(error)
@@ -268,9 +266,9 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
         !requestId ||
         doneRequestIds.current.indexOf(requestId) === -1
       ) return resolve(null)
-      const id = uuidv4()
+      const id = uuid()
       setRequestId(id)
-      enqueue(id, route, parameters, selector)
+      enqueue(id, route, body, headers)
       emitter.on(id, ({ data, error }) => {
         if (error) {
           reject(error)
@@ -279,7 +277,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
         }
       })
     })
-  }, [requestId, route, parameters, selector])
+  }, [requestId, route, body, headers])
 
   useEffect(() => {
     if (!requestId) return;
@@ -302,7 +300,7 @@ export const useBlestRequest = (route: string, parameters?: any, selector?: Bles
 
 }
 
-export const useBlestLazyRequest = (route: string, selector?: BlestSelector|null|false, options?: BlestLazyRequestOptions): [(parameters?: any) => Promise<any>, BlestRequestState] => {
+export const useBlestLazyRequest = (route: string, headers?: any, options?: BlestLazyRequestOptions): [(body?: any) => Promise<any>, BlestRequestState] => {
   
   const { state, enqueue } = useContext(BlestContext)
   const [requestId, setRequestId] = useState<string | null>(null)
@@ -310,13 +308,13 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector|null
   const allRequestIds = useRef<string[]>([])
   const doneRequestIds = useRef<string[]>([])
 
-  const request = useCallback((parameters?: any) => {
+  const request = useCallback((body?: any) => {
     return new Promise((resolve, reject) => {
-      if (options && options.skip) return reject()
-      const id = uuidv4()
+      if (options?.skip) return reject()
+      const id = uuid()
       setRequestId(id)
       allRequestIds.current = [...allRequestIds.current, id]
-      enqueue(id, route, parameters, selector)
+      enqueue(id, route, body, headers)
       emitter.on(id, ({ data, error }) => {
         if (error) {
           reject(error)
@@ -325,7 +323,7 @@ export const useBlestLazyRequest = (route: string, selector?: BlestSelector|null
         }
       })
     })
-  }, [route, selector, options])
+  }, [route, headers, options])
 
   useEffect(() => {
     for (let i = 0; i < allRequestIds.current.length; i++) {

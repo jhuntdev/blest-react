@@ -8,8 +8,7 @@ To learn more about BLEST, please visit the website: https://blest.jhunt.dev
 
 - Built on JSON - Reduce parsing time and overhead
 - Request Batching - Save bandwidth and reduce load times
-- Compact Payloads - Save more bandwidth
-- Selective Returns - Save even more bandwidth
+- Compact Payloads - Save even more bandwidth
 - Single Endpoint - Reduce complexity and improve data privacy
 - Fully Encrypted - Improve data privacy
 
@@ -36,7 +35,7 @@ import { BlestProvider } from 'blest-react'
 
 const App = () => {
   return (
-    <BlestProvider url='http://localhost:8080' options={{ maxBatchSize: 25, bufferDelay: 10, headers: { Authorization: 'Bearer token' } }}>
+    <BlestProvider url='http://localhost:8080' options={{ maxBatchSize: 25, bufferDelay: 10, httpHeaders: { Authorization: 'Bearer token' } }}>
       {/* Your app here */}
     </BlestProvider>
   )
@@ -63,7 +62,7 @@ Use the `useBlestRequest` hook to perform passive requests on mount and when par
 import { useBlestRequest } from 'blest-react'
 
 const MyComponent = () => {
-  const { data, loading, error } = useBlestRequest('listItems', { limit: 24 }, ['data', ['pageInfo', ['endCursor', 'hasNextPage']]])
+  const { data, loading, error } = useBlestRequest('listItems', { limit: 24 }, { auth: 'myToken' })
 
   return (
     // Your component here

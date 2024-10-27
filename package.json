@@ -1,6 +1,6 @@
 {
   "name": "blest-react",
-  "version": "0.1.25",
+  "version": "1.0.0",
   "description": "A React client for BLEST (Batch-able, Lightweight, Encrypted State Transfer), an improved communication protocol for web APIs which leverages JSON, supports request batching by default, and provides a modern alternative to REST.",
   "keywords": [
     "blest",
@@ -27,7 +27,7 @@
     "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "JHunt <blest@jhunt.dev>",
+  "author": "JHunt <hello@jhunt.dev>",
   "license": "MIT",
   "peerDependencies": {
     "react": "16.14 - 18"
