@@ -55,10 +55,14 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useLazyRequest = exports.useRequest = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.withBlest = exports.BlestProvider = void 0;
 var react_1 = require("react");
 var uuid_1 = require("uuid");
+var isEqual_1 = __importDefault(require("lodash/isEqual"));
 var EventEmitter = /** @class */ (function () {
     function EventEmitter() {
         this.events = {};
@@ -85,16 +89,17 @@ var EventEmitter = /** @class */ (function () {
 }());
 var emitter = new EventEmitter();
 var BlestContext = (0, react_1.createContext)({ queue: { current: [] }, state: {}, enqueue: function () { }, ammend: function () { } });
-var BlestProvider = function (_a) {
+exports.BlestProvider = (0, react_1.memo)(function (_a) {
     var children = _a.children, url = _a.url, _b = _a.options, options = _b === void 0 ? {} : _b;
+    // const safeOptions = useDeepMemo(options)
     var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
     var queue = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
-    var headers = (0, react_1.useRef)(null);
-    headers.current = options && options.headers && typeof options.headers === 'object' ? options.headers : {};
-    var bufferDelay = options && options.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
-    var maxBatchSize = options && options.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
-    var enqueue = (0, react_1.useCallback)(function (id, route, parameters, selector) {
+    var httpHeaders = useDeepMemo(options.httpHeaders === 'object' ? options.httpHeaders : {});
+    // httpHeaders.current = options?.httpHeaders && typeof options.httpHeaders === 'object' ? options.httpHeaders : {}
+    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
+    var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
+    var enqueue = (0, react_1.useCallback)(function (id, route, body, headers) {
         // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
         setState(function (state) {
             var _a;
@@ -104,11 +109,11 @@ var BlestProvider = function (_a) {
                 data: null
             }, _a));
         });
-        queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, parameters, selector]], false);
+        queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, body, headers]], false);
         if (!timeout.current) {
             timeout.current = setTimeout(process, bufferDelay);
         }
-    }, [options]);
+    }, []);
     var ammend = (0, react_1.useCallback)(function (id, data) {
         setState(function (state) {
             var _a;
@@ -136,7 +141,7 @@ var BlestProvider = function (_a) {
                 body: JSON.stringify(myQueue),
                 mode: 'cors',
                 method: 'POST',
-                headers: __assign(__assign({}, headers.current), { "Content-Type": "application/json", "Accept": "application/json" })
+                headers: __assign(__assign({}, httpHeaders), { "Content-Type": "application/json", "Accept": "application/json" })
             })
                 .then(function (response) { return __awaiter(void 0, void 0, void 0, function () {
                 var results, error_1;
@@ -199,10 +204,11 @@ var BlestProvider = function (_a) {
         for (var i = 0; i < batchCount; i++) {
             _loop_1(i);
         }
-    }, [headers, maxBatchSize, bufferDelay]);
+    }, [httpHeaders, maxBatchSize, bufferDelay]);
     return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue, ammend: ammend } }, children);
-};
-exports.BlestProvider = BlestProvider;
+}, function (oldProps, newProps) {
+    return oldProps.url === newProps.url && (0, isEqual_1.default)(oldProps.options, newProps.options) && (0, isEqual_1.default)(oldProps.children, newProps.children);
+});
 var withBlest = function (Component, url, options) {
     return function (props) { return (0, react_1.createElement)(exports.BlestProvider, { url: url, options: options, children: (0, react_1.createElement)(Component, props) }); };
 };
@@ -215,37 +221,41 @@ var useBlestContext = function () {
     return context;
 };
 exports.useBlestContext = useBlestContext;
-var useBlestRequest = function (route, parameters, selector, options) {
+var useBlestRequest = function (route, body, headers, options) {
+    var safeBody = useDeepMemo(body);
+    var safeHeaders = useDeepMemo(headers);
+    var safeOptions = useDeepMemo(options);
     var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue, ammend = _a.ammend;
     var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
-    var queryState = (0, react_1.useMemo)(function () { return requestId && state[requestId]; }, [requestId && state[requestId]]);
+    var requestState = useDeepMemo(requestId && state[requestId]);
+    // useMemo(() => requestId && state[requestId], [requestId && JSON.stringify(state[requestId])])
     var lastRequest = (0, react_1.useRef)(null);
     var allRequestIds = (0, react_1.useRef)([]);
     var doneRequestIds = (0, react_1.useRef)([]);
     var callbacksById = (0, react_1.useRef)({});
     (0, react_1.useEffect)(function () {
-        if (options && options.skip)
+        if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
             return;
-        var requestHash = route + JSON.stringify(parameters || {}) + JSON.stringify(selector || []) + JSON.stringify(options || {});
+        var requestHash = route + JSON.stringify(safeBody || {}) + JSON.stringify(safeHeaders || {}) + JSON.stringify(safeOptions || {});
         if (lastRequest.current !== requestHash) {
             lastRequest.current = requestHash;
-            var id = (0, uuid_1.v4)();
+            var id = (0, uuid_1.v1)();
             setRequestId(id);
             allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
-            enqueue(id, route, parameters, selector);
+            enqueue(id, route, safeBody, safeHeaders);
         }
-    }, [route, parameters, selector, options]);
-    var fetchMore = (0, react_1.useCallback)(function (parameters, mergeFunction) {
+    }, [route, safeBody, safeHeaders, safeOptions]);
+    var fetchMore = function (body, mergeFunction) {
         return new Promise(function (resolve, reject) {
             var _a;
-            if ((options && options.skip) ||
+            if ((safeOptions && safeOptions.skip) ||
                 !requestId ||
                 doneRequestIds.current.indexOf(requestId) === -1)
                 return resolve(null);
-            var id = (0, uuid_1.v4)();
+            var id = (0, uuid_1.v1)();
             allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
             callbacksById.current = __assign(__assign({}, callbacksById.current), (_a = {}, _a[id] = mergeFunction, _a));
-            enqueue(id, route, parameters, selector);
+            enqueue(id, route, body, safeHeaders);
             emitter.on(id, function (_a) {
                 var data = _a.data, error = _a.error;
                 if (error) {
@@ -256,16 +266,16 @@ var useBlestRequest = function (route, parameters, selector, options) {
                 }
             });
         });
-    }, [route, requestId]);
-    var refresh = (0, react_1.useCallback)(function () {
+    };
+    var refresh = function () {
         return new Promise(function (resolve, reject) {
-            if ((options && options.skip) ||
+            if ((safeOptions && safeOptions.skip) ||
                 !requestId ||
                 doneRequestIds.current.indexOf(requestId) === -1)
                 return resolve(null);
-            var id = (0, uuid_1.v4)();
+            var id = (0, uuid_1.v1)();
             setRequestId(id);
-            enqueue(id, route, parameters, selector);
+            enqueue(id, route, safeBody, safeHeaders);
             emitter.on(id, function (_a) {
                 var data = _a.data, error = _a.error;
                 if (error) {
@@ -276,7 +286,7 @@ var useBlestRequest = function (route, parameters, selector, options) {
                 }
             });
         });
-    }, [requestId, route, parameters, selector]);
+    };
     (0, react_1.useEffect)(function () {
         var _a;
         if (!requestId)
@@ -290,24 +300,27 @@ var useBlestRequest = function (route, parameters, selector, options) {
                 }
             }
         }
-    }, [state, options, requestId]);
-    return __assign(__assign({}, (queryState || { loading: true, error: null, data: null })), { fetchMore: fetchMore, refresh: refresh });
+    }, [requestState, requestId]);
+    return __assign(__assign({}, (requestState || { loading: true, error: null, data: null })), { fetchMore: fetchMore, refresh: refresh });
 };
 exports.useBlestRequest = useBlestRequest;
-var useBlestLazyRequest = function (route, selector, options) {
+var useBlestLazyRequest = function (route, headers, options) {
+    var safeHeaders = useDeepMemo(headers);
+    var safeOptions = useDeepMemo(options);
     var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue;
     var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
-    var queryState = (0, react_1.useMemo)(function () { return requestId && state[requestId]; }, [requestId && state[requestId]]);
+    var requestState = useDeepMemo(requestId && state[requestId]);
+    // useMemo(() => requestId && state[requestId], [requestId && state[requestId]])
     var allRequestIds = (0, react_1.useRef)([]);
     var doneRequestIds = (0, react_1.useRef)([]);
-    var request = (0, react_1.useCallback)(function (parameters) {
+    var request = (0, react_1.useCallback)(function (body) {
         return new Promise(function (resolve, reject) {
-            if (options && options.skip)
+            if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
                 return reject();
-            var id = (0, uuid_1.v4)();
+            var id = (0, uuid_1.v1)();
             setRequestId(id);
             allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
-            enqueue(id, route, parameters, selector);
+            enqueue(id, route, body, safeHeaders);
             emitter.on(id, function (_a) {
                 var data = _a.data, error = _a.error;
                 if (error) {
@@ -318,22 +331,28 @@ var useBlestLazyRequest = function (route, selector, options) {
                 }
             });
         });
-    }, [route, selector, options]);
+    }, [enqueue, route, safeHeaders, safeOptions]);
     (0, react_1.useEffect)(function () {
         for (var i = 0; i < allRequestIds.current.length; i++) {
             var id = allRequestIds.current[i];
             if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
                 doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
-                if (options && options.onComplete && typeof options.onComplete === 'function') {
-                    options.onComplete(state[id].data, state[id].error);
+                if (safeOptions && safeOptions.onComplete && typeof safeOptions.onComplete === 'function') {
+                    safeOptions.onComplete(state[id].data, state[id].error);
                 }
             }
         }
-    }, [state, options]);
-    return [request, queryState || { loading: false, error: null, data: null }];
+    }, [requestState, safeOptions]);
+    return [request, requestState || { loading: false, error: null, data: null }];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
 exports.useRequest = exports.useBlestRequest;
 exports.useLazyRequest = exports.useBlestLazyRequest;
-// export const useQuery = useBlestRequest
-// export const useLazyQuery = useBlestLazyRequest
+var useDeepMemo = function (value) {
+    var _a = (0, react_1.useState)(), safeValue = _a[0], setSafeValue = _a[1];
+    if (!(0, isEqual_1.default)(value, safeValue)) {
+        console.log('useDeepMemo', value, safeValue);
+        setSafeValue(value);
+    }
+    return safeValue;
+};

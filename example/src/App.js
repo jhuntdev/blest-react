@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BlestProvider, useBlestLazyRequest, useBlestRequest } from 'blest-react'
 
 function App() {
@@ -20,7 +20,7 @@ function App() {
 }
 
 const Component1 = () => {
-  const { data, error, loading, fetchMore } = useBlestRequest('hello', null)
+  const { data, error, loading, fetchMore } = useBlestRequest('hello')
   const handleClick = () => {
     fetchMore(
       null,
@@ -40,7 +40,8 @@ const Component1 = () => {
 
 const Component2 = () => {
   const [name, setName] = useState('Steve')
-  const [greet, { data, error, loading }] = useBlestLazyRequest('greet', null)
+  // const headers = useRef({ auth: 'myToken' })
+  const [greet, { data, error, loading }] = useBlestLazyRequest('greet', { auth: 'myToken' })
   useEffect(() => {
     greet({ name }).then(console.log.bind(null, 'greet.then()')).catch(console.error.bind(null, 'greet.catch()'))
   }, [greet, name])
