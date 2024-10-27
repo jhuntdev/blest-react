@@ -1,9 +1,6 @@
 {
   "name": "blest-react-example",
   "version": "1.0.0",
-  "description": "",
-  "author": "JHunt <blest@jhunt.dev>",
-  "license": "MIT",
   "dependencies": {
     "@testing-library/jest-dom": "5.16.5",
     "@testing-library/react": "13.4.0",

@@ -2,12 +2,8 @@ import { useEffect, useState } from 'react'
 import { BlestProvider, useBlestLazyRequest, useBlestRequest } from 'blest-react'
 
 function App() {
-  const [headers, setHeaders] = useState()
-  useEffect(() => {
-    setHeaders({ 'Strange-Header': 'Unusual Value' })
-  }, [])
   return (
-    <BlestProvider url='http://localhost:8080' options={{ headers }}>
+    <BlestProvider url='http://localhost:8080' options={{ httpHeaders: { 'Authorization': 'Bearer token' } }}>
       <div>
         <h1 style={{ marginTop: 0 }}>BLEST React Example</h1>
         <hr />
@@ -24,7 +20,7 @@ function App() {
 }
 
 const Component1 = () => {
-  const { data, error, loading, fetchMore } = useBlestRequest('hello', null, ['hello'])
+  const { data, error, loading, fetchMore } = useBlestRequest('hello', null)
   const handleClick = () => {
     fetchMore(
       null,
@@ -35,7 +31,7 @@ const Component1 = () => {
   }
   return (
     <div>
-      <h3>{`["hello", null, ["hello"]]`}</h3>
+      <h3>{`["hello", null]`}</h3>
       <p>{loading ? 'Loading...' : error ? 'Error: ' + error.message : JSON.stringify(data)}</p>
       {!loading && !error && <button onClick={handleClick}>Fetch More ({data?.count || 0})</button>}
     </div>
