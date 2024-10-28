@@ -9,7 +9,7 @@ To learn more about BLEST, please visit the website: https://blest.jhunt.dev
 - Built on JSON - Reduce parsing time and overhead
 - Request Batching - Save bandwidth and reduce load times
 - Compact Payloads - Save even more bandwidth
-- Single Endpoint - Reduce complexity and improve data privacy
+- Single Endpoint - Reduce complexity and facilitate introspection
 - Fully Encrypted - Improve data privacy
 
 ## Installation
