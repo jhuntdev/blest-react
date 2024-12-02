@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, FC, ComponentClass, memo } from 'react'
+import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, FC, ComponentClass, memo, useMemo } from 'react'
 import { v1 as uuid } from 'uuid'
 import isEqual from 'lodash/isEqual'
 
@@ -74,10 +74,10 @@ export const BlestProvider = memo(({ children, url, options = {} }: { children: 
   const [state, setState] = useState<BlestGlobalState>({})
   const queue = useRef<BlestQueueItem[]>([])
   const timeout = useRef<number | null>(null)
-  const httpHeaders = useDeepMemo(options.httpHeaders === 'object' ? options.httpHeaders : {})
+  const httpHeaders = useDeepMemo(typeof options?.httpHeaders === 'object' ? options.httpHeaders : {})
   // httpHeaders.current = options?.httpHeaders && typeof options.httpHeaders === 'object' ? options.httpHeaders : {}
-  const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-  const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
+  const bufferDelay = useMemo(() => options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5, [options])
+  const maxBatchSize = useMemo(() => options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25, [options])
 
   const enqueue = useCallback((id: string, route: string, body?: any, headers?: any) => {
     // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
@@ -95,7 +95,7 @@ export const BlestProvider = memo(({ children, url, options = {} }: { children: 
     if (!timeout.current) {
       timeout.current = setTimeout(process, bufferDelay)
     }
-  }, [])
+  }, [httpHeaders, maxBatchSize, bufferDelay])
 
   const ammend = useCallback((id: string, data: any) => {
     setState((state:BlestGlobalState) => {
@@ -108,7 +108,7 @@ export const BlestProvider = memo(({ children, url, options = {} }: { children: 
       }
       return newState
     })
-  }, [])
+  }, [httpHeaders, maxBatchSize, bufferDelay])
 
   const process = useCallback(() => {
     if (timeout.current) {
@@ -359,7 +359,6 @@ const useDeepMemo = (value: any): any => {
   const [safeValue, setSafeValue] = useState()
 
   if (!isEqual(value, safeValue)) {
-    console.log('useDeepMemo', value, safeValue)
     setSafeValue(value)
   }
 

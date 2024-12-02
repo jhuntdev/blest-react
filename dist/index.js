@@ -95,10 +95,10 @@ exports.BlestProvider = (0, react_1.memo)(function (_a) {
     var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
     var queue = (0, react_1.useRef)([]);
     var timeout = (0, react_1.useRef)(null);
-    var httpHeaders = useDeepMemo(options.httpHeaders === 'object' ? options.httpHeaders : {});
+    var httpHeaders = useDeepMemo(typeof (options === null || options === void 0 ? void 0 : options.httpHeaders) === 'object' ? options.httpHeaders : {});
     // httpHeaders.current = options?.httpHeaders && typeof options.httpHeaders === 'object' ? options.httpHeaders : {}
-    var bufferDelay = (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5;
-    var maxBatchSize = (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25;
+    var bufferDelay = (0, react_1.useMemo)(function () { return (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5; }, [options]);
+    var maxBatchSize = (0, react_1.useMemo)(function () { return (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25; }, [options]);
     var enqueue = (0, react_1.useCallback)(function (id, route, body, headers) {
         // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
         setState(function (state) {
@@ -113,14 +113,14 @@ exports.BlestProvider = (0, react_1.memo)(function (_a) {
         if (!timeout.current) {
             timeout.current = setTimeout(process, bufferDelay);
         }
-    }, []);
+    }, [httpHeaders, maxBatchSize, bufferDelay]);
     var ammend = (0, react_1.useCallback)(function (id, data) {
         setState(function (state) {
             var _a;
             var newState = __assign(__assign({}, state), (_a = {}, _a[id] = __assign(__assign({}, state[id]), { data: data }), _a));
             return newState;
         });
-    }, []);
+    }, [httpHeaders, maxBatchSize, bufferDelay]);
     var process = (0, react_1.useCallback)(function () {
         if (timeout.current) {
             clearTimeout(timeout.current);
@@ -351,7 +351,6 @@ exports.useLazyRequest = exports.useBlestLazyRequest;
 var useDeepMemo = function (value) {
     var _a = (0, react_1.useState)(), safeValue = _a[0], setSafeValue = _a[1];
     if (!(0, isEqual_1.default)(value, safeValue)) {
-        console.log('useDeepMemo', value, safeValue);
         setSafeValue(value);
     }
     return safeValue;
