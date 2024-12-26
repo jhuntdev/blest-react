@@ -1,18 +1,10 @@
-import { MutableRefObject, FC, ComponentClass } from 'react';
 interface BlestRequestState {
     loading: boolean;
     error: any;
     data: any;
 }
-interface BlestGlobalState {
-    [id: string]: BlestRequestState;
-}
-type BlestQueueItem = [string, string, any?, any?];
 interface BlestContextValue {
-    queue: MutableRefObject<BlestQueueItem[]>;
-    state: BlestGlobalState;
-    enqueue: (id: string, route: string, body?: any, headers?: any) => void;
-    ammend: (id: string, data: any) => void;
+    client: HttpClient | null;
 }
 export interface BlestProviderOptions {
     maxBatchSize?: number;
@@ -21,25 +13,47 @@ export interface BlestProviderOptions {
 }
 export interface BlestRequestOptions {
     skip?: boolean;
-    fetchMore?: (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => void;
 }
 export interface BlestLazyRequestOptions {
     skip?: boolean;
-    onComplete?: (data: any, error: any) => void;
 }
-export declare const BlestProvider: import("react").MemoExoticComponent<({ children, url, options }: {
+export declare class EventEmitter {
+    runByEvent: any;
+    add(event: string, cb: any, once?: boolean): void;
+    remove(node: any): void;
+    on(event: string, cb: any, once?: boolean): () => void;
+    once(event: string, cb: any): () => void;
+    emit(event: string, ...data: any[]): void;
+}
+export declare const BlestProvider: ({ children, url, options }: {
     children: any;
     url: string;
-    options?: BlestProviderOptions | undefined;
-}) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>>>;
-export declare const withBlest: (Component: FC | ComponentClass, url: string, options?: BlestProviderOptions) => (props?: any) => import("react").FunctionComponentElement<{
-    children: any;
-    url: string;
-    options?: BlestProviderOptions | undefined;
+    options?: BlestProviderOptions;
+}) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>> | import("react").FunctionComponentElement<{
+    children?: import("react").ReactNode | undefined;
 }>;
-export declare const useBlestContext: () => BlestContextValue;
+export interface ClientOptions {
+    httpHeaders?: any;
+    maxBatchSize?: number;
+    bufferDelay?: number;
+    idGenerator?: () => string;
+}
+declare class HttpClient {
+    private url;
+    private httpHeaders;
+    private maxBatchSize;
+    private bufferDelay;
+    private queue;
+    private timeout;
+    private emitter;
+    private idGenerator;
+    private setOptions;
+    constructor(url: string, options?: ClientOptions);
+    private process;
+    set(option: string, value: any): void;
+    request(route: string, body: object | null, headers: object | null): Promise<unknown>;
+}
 interface BlestRequestHookReturn extends BlestRequestState {
-    fetchMore: (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<any>;
     refresh: () => Promise<any>;
 }
 export declare const useBlestRequest: (route: string, body?: any, headers?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;

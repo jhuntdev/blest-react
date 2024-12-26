@@ -1,6 +1,12 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback, createElement, MutableRefObject, FC, ComponentClass, memo, useMemo } from 'react'
-import { v1 as uuid } from 'uuid'
+import { useState, useEffect, createContext, useContext, createElement, useRef, Fragment, useCallback } from 'react'
 import isEqual from 'lodash/isEqual'
+
+const idGenerator = (length: number = 8): string => {
+  const max = Math.pow(16, length) - 1;
+  const randomNumber = Math.floor(Math.random() * (max + 1));
+  const id = randomNumber.toString(16).padStart(length, '0');
+  return id;
+}
 
 interface BlestRequestState {
   loading: boolean;
@@ -8,17 +14,8 @@ interface BlestRequestState {
   data: any;
 }
 
-interface BlestGlobalState {
-  [id: string]: BlestRequestState;
-}
-
-type BlestQueueItem = [string, string, any?, any?]
-
 interface BlestContextValue {
-  queue: MutableRefObject<BlestQueueItem[]>,
-  state: BlestGlobalState,
-  enqueue: (id: string, route: string, body?: any, headers?: any) => void
-  ammend: (id: string, data: any) => void
+  client: HttpClient|null
 }
 
 export interface BlestProviderOptions {
@@ -29,280 +26,262 @@ export interface BlestProviderOptions {
 
 export interface BlestRequestOptions {
   skip?: boolean
-  fetchMore?: (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => void
 }
 
 export interface BlestLazyRequestOptions {
   skip?: boolean
-  onComplete?: (data: any, error: any) => void
 }
 
-type EventHandler<T> = (data: T) => void
+export class EventEmitter {
+  runByEvent: any = {}
 
-class EventEmitter<T> {
-  private events: { [key: string]: EventHandler<T>[] } = {}
-
-  on(eventName: string, handler: EventHandler<T>): void {
-    if (!this.events[eventName]) {
-      this.events[eventName] = []
-    }
-    this.events[eventName].push(handler)
-  }
-
-  off(eventName: string, handler: EventHandler<T>): void {
-    const eventHandlers = this.events[eventName]
-    if (eventHandlers) {
-      this.events[eventName] = eventHandlers.filter((h) => h !== handler)
-    }
-  }
-
-  emit(eventName: string, data: T): void {
-    const eventHandlers = this.events[eventName]
-    if (eventHandlers) {
-      eventHandlers.forEach((handler) => handler(data))
-    }
-  }
-}
-
-const emitter = new EventEmitter<any>();
-
-const BlestContext = createContext<BlestContextValue>({ queue: { current: [] }, state: {}, enqueue: () => {}, ammend: () => {} })
-
-export const BlestProvider = memo(({ children, url, options = {} }: { children: any, url: string, options?: BlestProviderOptions }) => {
-
-  // const safeOptions = useDeepMemo(options)
-  const [state, setState] = useState<BlestGlobalState>({})
-  const queue = useRef<BlestQueueItem[]>([])
-  const timeout = useRef<number | null>(null)
-  const httpHeaders = useDeepMemo(typeof options?.httpHeaders === 'object' ? options.httpHeaders : {})
-  // httpHeaders.current = options?.httpHeaders && typeof options.httpHeaders === 'object' ? options.httpHeaders : {}
-  const bufferDelay = useMemo(() => options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5, [options])
-  const maxBatchSize = useMemo(() => options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25, [options])
-
-  const enqueue = useCallback((id: string, route: string, body?: any, headers?: any) => {
-    // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-    setState((state: BlestGlobalState) => {
-      return {
-        ...state,
-        [id]: {
-          loading: true,
-          error: null,
-          data: null
-        }
+  add(event: string, cb: any, once: boolean = false) {
+      if (!this.runByEvent[event]) this.runByEvent[event] = [];
+      const node = {
+          id: idGenerator(),
+          event,
+          cb,
+          once
       }
-    })
-    queue.current = [...queue.current, [id, route, body, headers]]
-    if (!timeout.current) {
-      timeout.current = setTimeout(process, bufferDelay)
-    }
-  }, [httpHeaders, maxBatchSize, bufferDelay])
+      this.runByEvent[event].push(node)
+  }
 
-  const ammend = useCallback((id: string, data: any) => {
-    setState((state:BlestGlobalState) => {
-      const newState = {
-        ...state,
-        [id]: {
-          ...state[id],
-          data
-        }
+  remove(node: any) {
+      this.runByEvent[node.event] = this.runByEvent[node.event].filter((n: any) => n.id !== node.id)
+  }
+
+  on(event: string, cb: any, once: boolean = false) {
+      if(typeof cb != 'function') throw TypeError("Callback parameter has to be a function.");
+      let node = this.add(event, cb, once);
+      return () => this.remove(node);
+  }
+
+  once(event: string, cb: any) {
+      return this.on(event, cb, true);
+  }
+
+  emit(event: string, ...data: any[]) {
+      let nodes = this.runByEvent[event];
+      for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          node.cb(...data);
+          if(node.once) {
+              this.remove(node)
+          }
       }
-      return newState
-    })
-  }, [httpHeaders, maxBatchSize, bufferDelay])
-
-  const process = useCallback(() => {
-    if (timeout.current) {
-      clearTimeout(timeout.current)
-      timeout.current = null
-    }
-    if (!queue.current.length) {
-      return
-    }
-    // const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
-    // const headers = options?.headers && typeof options.headers === 'object' ? options.headers : {}
-    const copyQueue: BlestQueueItem[] = [...queue.current] // .map((q: BlestQueueItem) => [...q])
-    queue.current = []
-    const batchCount = Math.ceil(copyQueue.length / maxBatchSize)
-    for (let i = 0; i < batchCount; i++) {
-      const myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize)
-      const requestIds = myQueue.map((q: BlestQueueItem) => q[0])
-      fetch(url, {
-        body: JSON.stringify(myQueue),
-        mode: 'cors',
-        method: 'POST',
-        headers: {
-          ...httpHeaders,
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        }
-      })
-      .then(async (response) => {
-        const results = await response.json()
-        if (response.ok) {
-          setState((state: BlestGlobalState) => {
-            const newState = {
-              ...state
-            }
-            for (let i = 0; i < results.length; i++) {
-              const item = results[i]
-              emitter.emit(item[0], { data: item[2], error: item[3] })
-              newState[item[0]] = {
-                loading: false,
-                error: item[3],
-                data: item[2]
-              }
-            }
-            return newState
-          })
-        } else {
-          const error = results || { status: response.status, message: response.statusText || 'Network error' } 
-          setState((state: BlestGlobalState) => {
-            const newState = {
-              ...state
-            }
-            for (let i = 0; i < requestIds.length; i++) {
-              const id = requestIds[i]
-              emitter.emit(id, { data: null, error })
-              newState[id] = {
-                loading: false,
-                error,
-                data: null
-              }
-            }
-            return newState
-          })
-        }
-      })
-      .catch((error):void => {
-        setState((state: BlestGlobalState) => {
-          const newState = {
-            ...state
-          }
-          for (let i = 0; i < requestIds.length; i++) {
-            const id = requestIds[i]
-            emitter.emit(id, { data: null, error })
-            newState[id] = {
-              loading: false,
-              error,
-              data: null
-            }
-          }
-          return newState
-        })
-      })
-    }
-  }, [httpHeaders, maxBatchSize, bufferDelay])
-
-  return createElement(BlestContext.Provider, { value: { queue, state, enqueue, ammend }}, children)
-
-}, (oldProps, newProps) => {
-  return oldProps.url === newProps.url && isEqual(oldProps.options, newProps.options) && isEqual(oldProps.children, newProps.children)
-})
-
-export const withBlest = (Component: FC | ComponentClass, url: string, options?: BlestProviderOptions) => {
-  return (props?: any) => createElement(BlestProvider, { url, options, children: createElement(Component, props) })
+  }
 }
 
-export const useBlestContext = () => {
+const BlestContext = createContext<BlestContextValue>({ client: null })
 
-  const context = useContext(BlestContext)
+export const BlestProvider = ({ children, url, options = {} }: { children: any, url: string, options?: BlestProviderOptions }) => {
+
+  const safeOptions = useDeepMemo(options || {})
+  const [client, setClient] = useState<HttpClient|null>(null)
 
   useEffect(() => {
-    console.warn('useBlestContext() is a utility function for debugging')
+    setClient(new HttpClient(url, safeOptions))
   }, [])
 
-  return context
+  useEffect(() => {
+    client?.setOptions(safeOptions)
+  }, [safeOptions])
 
+  useEffect(() => {
+    client?.setUrl(url)
+  }, [url])
+
+  return client ? createElement(BlestContext.Provider, { value: { client }}, children) : createElement(Fragment)
+
+}
+
+export interface ClientOptions {
+    httpHeaders?: any
+    maxBatchSize?: number
+    bufferDelay?: number
+    idGenerator?: () => string
+}
+
+class HttpClient {
+
+    private url = '';
+    private httpHeaders = {};
+    private maxBatchSize = 25;
+    private bufferDelay = 10;
+    private queue: any[] = [];
+    private timeout: ReturnType<typeof setTimeout> | null = null;
+    private emitter = new EventEmitter();
+    private idGenerator: () => string = idGenerator;
+
+    public setOptions(options?: ClientOptions) {
+        if (!options) {
+          return false;
+        } else if (typeof options !== 'object') {
+          throw new Error('Options should be an object');
+        } else {
+          if (options.httpHeaders) {
+            if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
+              throw new Error('"httpHeaders" option should be an object');
+            }
+          }
+          if (options.maxBatchSize) {
+            if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
+              throw new Error('"maxBatchSize" option should be an integer');
+            } else if (options.maxBatchSize < 1) {
+              throw new Error('"maxBatchSize" option should be greater than or equal to one');
+            }
+          }
+          if (options.bufferDelay) {
+            if (typeof options.bufferDelay !== 'number' || Math.round(options.bufferDelay) !== options.bufferDelay) {
+              throw new Error('"bufferDelay" option should be an integer');
+            } else if (options.bufferDelay < 0) {
+              throw new Error('"bufferDelay" option should be greater than or equal to zero');
+            }
+          }
+        }
+        return false;
+    }
+
+    public setUrl(url?:string) {
+      if (url && typeof url === 'string') {
+        this.url = url
+      }
+    }
+
+    constructor(url: string, options?: ClientOptions) {
+        this.url = url;
+        this.setOptions(options);
+    }
+
+    private process() {
+        if (this.timeout) {
+            clearTimeout(this.timeout)
+            this.timeout = null
+        }
+        if (!this.queue.length) {
+            return
+        }
+        const copyQueue = this.queue.map((q) => [...q])
+        this.queue = []
+        const batchCount = Math.ceil(copyQueue.length / this.maxBatchSize)
+        for (let i = 0; i < batchCount; i++) {
+            const myQueue = copyQueue.slice(i * this.maxBatchSize, (i + 1) * this.maxBatchSize)
+            httpPostRequest(this.url, myQueue, this.httpHeaders)
+            .then(async (data: any) => {
+                data.forEach((r: any) => {
+                    this.emitter.emit(r[0], r[2], r[3]);
+                });
+            })
+            .catch((error: any) => {
+                myQueue.forEach((q) => {
+                    this.emitter.emit(q[0], null, error);
+                });
+            });
+        }
+    }
+
+    public set(option: string, value: any) {
+      if (typeof option !== 'string') throw new Error('Option name must be a string')
+      this.setOptions({ [option]: value })
+    }
+
+    public request(route: string, body: object | null, headers: object | null) {
+        return new Promise((resolve, reject) => {
+            if (!route) {
+                return reject(new Error('Route is required'));
+            } else if (body && typeof body !== 'object') {
+                return reject(new Error('Body should be an object'));
+            } else if (headers && typeof headers !== 'object') {
+                return reject(new Error('Headers should be an object'));
+            }
+            const id = this.idGenerator();
+            this.emitter.once(id, (result: any, error: any) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            });
+            this.queue.push([id, route, body || null, headers || null]);
+            if (!this.timeout) {
+                this.timeout = setTimeout(() => { this.process() }, this.bufferDelay);
+            }
+        });
+    }
+};
+
+const httpPostRequest = async (url: string, data: any, httpHeaders: any = {}): Promise<any> => {
+    const requestData = JSON.stringify(data);
+    
+    const options: RequestInit = {
+        method: 'POST',
+        body: requestData,
+        mode: 'cors',
+        headers: {
+            ...httpHeaders,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    };
+    
+    const response: Response = await fetch(url, options);
+
+    if (!response.ok) throw new Error(`HTTP POST request failed with status code ${response.status}`);
+    
+    return await response.json();
 }
 
 interface BlestRequestHookReturn extends BlestRequestState {
-  fetchMore: (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => Promise<any>,
   refresh: () => Promise<any>
 }
 
 export const useBlestRequest = (route: string, body?: any, headers?: any, options?: BlestRequestOptions): BlestRequestHookReturn => {
 
-  const safeBody = useDeepMemo(body)
-  const safeHeaders = useDeepMemo(headers)
-  const safeOptions = useDeepMemo(options)
-  const { state, enqueue, ammend } = useContext(BlestContext)
-  const [requestId, setRequestId] = useState<string | null>(null)
-  const requestState = useDeepMemo(requestId && state[requestId])
-  // useMemo(() => requestId && state[requestId], [requestId && JSON.stringify(state[requestId])])
-  const lastRequest = useRef<string | null>(null)
-  const allRequestIds = useRef<string[]>([])
-  const doneRequestIds = useRef<string[]>([])
-  const callbacksById = useRef<any>({})
+  const safeBody = useDeepMemo(body);
+  const safeHeaders = useDeepMemo(headers);
+  const safeOptions = useDeepMemo(options);
+  const { client } = useContext(BlestContext);
+  const [loading, setLoading] = useState(!options?.skip);
+  const [error, setError] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
+  const lastRequest = useRef<string>('');
+
+  const doRequest = (client: HttpClient, route: string, body?: any, headers?: any) => {
+    setLoading(true);
+    return client.request(route, body, headers)
+    .then((data) => {
+      setError(null);
+      setData(data);
+      return Promise.resolve(data);
+    })
+    .catch((error) => {
+      setData(null);
+      setError(error);
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+  }
 
   useEffect(() => {
     if (safeOptions?.skip) return;
-    const requestHash = route + JSON.stringify(safeBody || {}) + JSON.stringify(safeHeaders || {}) + JSON.stringify(safeOptions || {})
-    if (lastRequest.current !== requestHash) {
-      lastRequest.current = requestHash
-      const id = uuid()
-      setRequestId(id)
-      allRequestIds.current = [...allRequestIds.current, id]
-      enqueue(id, route, safeBody, safeHeaders)
+    const requestHash = route + JSON.stringify(safeBody) + JSON.stringify(safeHeaders);
+    if (!lastRequest.current || lastRequest.current !== requestHash) {
+      lastRequest.current = requestHash;
+      if (!client) throw new Error('Missing BLEST client in context');
+      doRequest(client, route, safeBody, safeHeaders);
     }
-  }, [route, safeBody, safeHeaders, safeOptions])
+  }, [client, route, safeBody, safeHeaders, safeOptions]);
 
-  const fetchMore = (body: any | null, mergeFunction: (oldData: any, newData: any) => any) => {
-    return new Promise((resolve, reject) => {
-      if (
-        (safeOptions && safeOptions.skip) ||
-        !requestId ||
-        doneRequestIds.current.indexOf(requestId) === -1
-      ) return resolve(null)
-      const id = uuid()
-      allRequestIds.current = [...allRequestIds.current, id]
-      callbacksById.current = {...callbacksById.current, [id]: mergeFunction}
-      enqueue(id, route, body, safeHeaders)
-      emitter.on(id, ({ data, error }) => {
-        if (error) {
-          reject(error)
-        } else if (data) {
-          resolve(data)
-        }
-      })
-    })
-  }
-
-  const refresh = () => {
-    return new Promise((resolve, reject) => {
-      if (
-        (safeOptions && safeOptions.skip) ||
-        !requestId ||
-        doneRequestIds.current.indexOf(requestId) === -1
-      ) return resolve(null)
-      const id = uuid()
-      setRequestId(id)
-      enqueue(id, route, safeBody, safeHeaders)
-      emitter.on(id, ({ data, error }) => {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(data)
-        }
-      })
-    })
-  }
-
-  useEffect(() => {
-    if (!requestId) return;
-    for (let i = 0; i < allRequestIds.current.length; i++) {
-      const id = allRequestIds.current[i]
-      if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
-        doneRequestIds.current = [...doneRequestIds.current, id]
-        if (state[id].data && typeof callbacksById.current[id] === 'function') {
-          ammend(requestId, callbacksById.current[id](requestId ? state[requestId]?.data || {} : {}, state[id].data))
-        }
-      }
-    }
-  }, [requestState, requestId])
+  const refresh = useCallback(() => {
+    if (!client) throw new Error('Missing BLEST client in context');
+    return doRequest(client, route, safeBody, safeHeaders);
+  }, [client, route, safeBody, safeHeaders]);
 
   return {
-    ...(requestState || { loading: true, error: null, data: null }),
-    fetchMore,
+    loading,
+    error,
+    data,
     refresh
   }
 
@@ -310,57 +289,49 @@ export const useBlestRequest = (route: string, body?: any, headers?: any, option
 
 export const useBlestLazyRequest = (route: string, headers?: any, options?: BlestLazyRequestOptions): [(body?: any) => Promise<any>, BlestRequestState] => {
   
-  const safeHeaders = useDeepMemo(headers)
-  const safeOptions = useDeepMemo(options)
-  const { state, enqueue } = useContext(BlestContext)
-  const [requestId, setRequestId] = useState<string | null>(null)
-  const requestState = useDeepMemo(requestId && state[requestId])
-  // useMemo(() => requestId && state[requestId], [requestId && state[requestId]])
-  const allRequestIds = useRef<string[]>([])
-  const doneRequestIds = useRef<string[]>([])
+  const safeHeaders = useDeepMemo(headers);
+  const safeOptions = useDeepMemo(options);
+  const { client } = useContext(BlestContext);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
+
+  const doRequest = (client: HttpClient, route: string, body?: any, headers?: any) => {
+    setLoading(true);
+    return client.request(route, body, headers)
+    .then((data) => {
+      setError(null);
+      setData(data);
+      return Promise.resolve(data);
+    })
+    .catch((error) => {
+      setData(null);
+      setError(error);
+    })
+    .finally(() => {
+      setLoading(false);
+    })
+  }
 
   const request = useCallback((body?: any) => {
-    return new Promise((resolve, reject) => {
-      if (safeOptions?.skip) return reject()
-      const id = uuid()
-      setRequestId(id)
-      allRequestIds.current = [...allRequestIds.current, id]
-      enqueue(id, route, body, safeHeaders)
-      emitter.on(id, ({ data, error }) => {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(data)
-        }
-      })
-    })
-  }, [enqueue, route, safeHeaders, safeOptions])
+    if (safeOptions?.skip) return Promise.reject();
+    if (!client) throw new Error('Missing BLEST client in context');
+    return doRequest(client, route, body, safeHeaders);
+  }, [client, route, safeHeaders]);
 
-  useEffect(() => {
-    for (let i = 0; i < allRequestIds.current.length; i++) {
-      const id = allRequestIds.current[i]
-      if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
-        doneRequestIds.current = [...doneRequestIds.current, id]
-        if (safeOptions && safeOptions.onComplete && typeof safeOptions.onComplete === 'function') {
-          safeOptions.onComplete(state[id].data, state[id].error)
-        }
-      }
-    }
-  }, [requestState, safeOptions])
-
-  return [request, requestState || { loading: false, error: null, data: null }]
+  return [request, { loading, error, data }];
 
 }
 
-export const useRequest = useBlestRequest
-export const useLazyRequest = useBlestLazyRequest
+export const useRequest = useBlestRequest;
+export const useLazyRequest = useBlestLazyRequest;
 
 const useDeepMemo = (value: any): any => {
-  const [safeValue, setSafeValue] = useState()
+  const [safeValue, setSafeValue] = useState();
 
   if (!isEqual(value, safeValue)) {
-    setSafeValue(value)
+    setSafeValue(value);
   }
 
-  return safeValue
+  return safeValue;
 }

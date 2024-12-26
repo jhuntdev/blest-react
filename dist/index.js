@@ -20,8 +20,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
@@ -59,291 +59,300 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useLazyRequest = exports.useRequest = exports.useBlestLazyRequest = exports.useBlestRequest = exports.useBlestContext = exports.withBlest = exports.BlestProvider = void 0;
+exports.useLazyRequest = exports.useRequest = exports.useBlestLazyRequest = exports.useBlestRequest = exports.BlestProvider = exports.EventEmitter = void 0;
 var react_1 = require("react");
-var uuid_1 = require("uuid");
 var isEqual_1 = __importDefault(require("lodash/isEqual"));
+var idGenerator = function (length) {
+    if (length === void 0) { length = 8; }
+    var max = Math.pow(16, length) - 1;
+    var randomNumber = Math.floor(Math.random() * (max + 1));
+    var id = randomNumber.toString(16).padStart(length, '0');
+    return id;
+};
 var EventEmitter = /** @class */ (function () {
     function EventEmitter() {
-        this.events = {};
+        this.runByEvent = {};
     }
-    EventEmitter.prototype.on = function (eventName, handler) {
-        if (!this.events[eventName]) {
-            this.events[eventName] = [];
-        }
-        this.events[eventName].push(handler);
+    EventEmitter.prototype.add = function (event, cb, once) {
+        if (once === void 0) { once = false; }
+        if (!this.runByEvent[event])
+            this.runByEvent[event] = [];
+        var node = {
+            id: idGenerator(),
+            event: event,
+            cb: cb,
+            once: once
+        };
+        this.runByEvent[event].push(node);
     };
-    EventEmitter.prototype.off = function (eventName, handler) {
-        var eventHandlers = this.events[eventName];
-        if (eventHandlers) {
-            this.events[eventName] = eventHandlers.filter(function (h) { return h !== handler; });
-        }
+    EventEmitter.prototype.remove = function (node) {
+        this.runByEvent[node.event] = this.runByEvent[node.event].filter(function (n) { return n.id !== node.id; });
     };
-    EventEmitter.prototype.emit = function (eventName, data) {
-        var eventHandlers = this.events[eventName];
-        if (eventHandlers) {
-            eventHandlers.forEach(function (handler) { return handler(data); });
+    EventEmitter.prototype.on = function (event, cb, once) {
+        var _this = this;
+        if (once === void 0) { once = false; }
+        if (typeof cb != 'function')
+            throw TypeError("Callback parameter has to be a function.");
+        var node = this.add(event, cb, once);
+        return function () { return _this.remove(node); };
+    };
+    EventEmitter.prototype.once = function (event, cb) {
+        return this.on(event, cb, true);
+    };
+    EventEmitter.prototype.emit = function (event) {
+        var data = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            data[_i - 1] = arguments[_i];
+        }
+        var nodes = this.runByEvent[event];
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            node.cb.apply(node, data);
+            if (node.once) {
+                this.remove(node);
+            }
         }
     };
     return EventEmitter;
 }());
-var emitter = new EventEmitter();
-var BlestContext = (0, react_1.createContext)({ queue: { current: [] }, state: {}, enqueue: function () { }, ammend: function () { } });
-exports.BlestProvider = (0, react_1.memo)(function (_a) {
+exports.EventEmitter = EventEmitter;
+var BlestContext = (0, react_1.createContext)({ client: null });
+var BlestProvider = function (_a) {
     var children = _a.children, url = _a.url, _b = _a.options, options = _b === void 0 ? {} : _b;
-    // const safeOptions = useDeepMemo(options)
-    var _c = (0, react_1.useState)({}), state = _c[0], setState = _c[1];
-    var queue = (0, react_1.useRef)([]);
-    var timeout = (0, react_1.useRef)(null);
-    var httpHeaders = useDeepMemo(typeof (options === null || options === void 0 ? void 0 : options.httpHeaders) === 'object' ? options.httpHeaders : {});
-    // httpHeaders.current = options?.httpHeaders && typeof options.httpHeaders === 'object' ? options.httpHeaders : {}
-    var bufferDelay = (0, react_1.useMemo)(function () { return (options === null || options === void 0 ? void 0 : options.bufferDelay) && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5; }, [options]);
-    var maxBatchSize = (0, react_1.useMemo)(function () { return (options === null || options === void 0 ? void 0 : options.maxBatchSize) && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25; }, [options]);
-    var enqueue = (0, react_1.useCallback)(function (id, route, body, headers) {
-        // const bufferDelay = options?.bufferDelay && typeof options.bufferDelay === 'number' && options.bufferDelay > 0 && Math.round(options.bufferDelay) === options.bufferDelay && options.bufferDelay || 5
-        setState(function (state) {
-            var _a;
-            return __assign(__assign({}, state), (_a = {}, _a[id] = {
-                loading: true,
-                error: null,
-                data: null
-            }, _a));
-        });
-        queue.current = __spreadArray(__spreadArray([], queue.current, true), [[id, route, body, headers]], false);
-        if (!timeout.current) {
-            timeout.current = setTimeout(process, bufferDelay);
+    var safeOptions = useDeepMemo(options || {});
+    var _c = (0, react_1.useState)(null), client = _c[0], setClient = _c[1];
+    (0, react_1.useEffect)(function () {
+        setClient(new HttpClient(url, safeOptions));
+    }, []);
+    // TODO: Update existing client if options change
+    return client ? (0, react_1.createElement)(BlestContext.Provider, { value: { client: client } }, children) : (0, react_1.createElement)(react_1.Fragment);
+};
+exports.BlestProvider = BlestProvider;
+var HttpClient = /** @class */ (function () {
+    function HttpClient(url, options) {
+        this.url = '';
+        this.httpHeaders = {};
+        this.maxBatchSize = 25;
+        this.bufferDelay = 10;
+        this.queue = [];
+        this.timeout = null;
+        this.emitter = new EventEmitter();
+        this.idGenerator = idGenerator;
+        this.url = url;
+        this.setOptions(options);
+    }
+    HttpClient.prototype.setOptions = function (options) {
+        if (!options) {
+            return false;
         }
-    }, [httpHeaders, maxBatchSize, bufferDelay]);
-    var ammend = (0, react_1.useCallback)(function (id, data) {
-        setState(function (state) {
-            var _a;
-            var newState = __assign(__assign({}, state), (_a = {}, _a[id] = __assign(__assign({}, state[id]), { data: data }), _a));
-            return newState;
-        });
-    }, [httpHeaders, maxBatchSize, bufferDelay]);
-    var process = (0, react_1.useCallback)(function () {
-        if (timeout.current) {
-            clearTimeout(timeout.current);
-            timeout.current = null;
+        else if (typeof options !== 'object') {
+            throw new Error('Options should be an object');
         }
-        if (!queue.current.length) {
+        else {
+            if (options.httpHeaders) {
+                if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
+                    throw new Error('"httpHeaders" option should be an object');
+                }
+            }
+            if (options.maxBatchSize) {
+                if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
+                    throw new Error('"maxBatchSize" option should be an integer');
+                }
+                else if (options.maxBatchSize < 1) {
+                    throw new Error('"maxBatchSize" option should be greater than or equal to one');
+                }
+            }
+            if (options.bufferDelay) {
+                if (typeof options.bufferDelay !== 'number' || Math.round(options.bufferDelay) !== options.bufferDelay) {
+                    throw new Error('"bufferDelay" option should be an integer');
+                }
+                else if (options.bufferDelay < 0) {
+                    throw new Error('"bufferDelay" option should be greater than or equal to zero');
+                }
+            }
+        }
+        return false;
+    };
+    HttpClient.prototype.process = function () {
+        var _this = this;
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        if (!this.queue.length) {
             return;
         }
-        // const maxBatchSize = options?.maxBatchSize && typeof options.maxBatchSize === 'number' && options.maxBatchSize > 0 && Math.round(options.maxBatchSize) === options.maxBatchSize && options.maxBatchSize || 25
-        // const headers = options?.headers && typeof options.headers === 'object' ? options.headers : {}
-        var copyQueue = __spreadArray([], queue.current, true); // .map((q: BlestQueueItem) => [...q])
-        queue.current = [];
-        var batchCount = Math.ceil(copyQueue.length / maxBatchSize);
+        var copyQueue = this.queue.map(function (q) { return __spreadArray([], q, true); });
+        this.queue = [];
+        var batchCount = Math.ceil(copyQueue.length / this.maxBatchSize);
         var _loop_1 = function (i) {
-            var myQueue = copyQueue.slice(i * maxBatchSize, (i + 1) * maxBatchSize);
-            var requestIds = myQueue.map(function (q) { return q[0]; });
-            fetch(url, {
-                body: JSON.stringify(myQueue),
-                mode: 'cors',
-                method: 'POST',
-                headers: __assign(__assign({}, httpHeaders), { "Content-Type": "application/json", "Accept": "application/json" })
-            })
-                .then(function (response) { return __awaiter(void 0, void 0, void 0, function () {
-                var results, error_1;
+            var myQueue = copyQueue.slice(i * this_1.maxBatchSize, (i + 1) * this_1.maxBatchSize);
+            httpPostRequest(this_1.url, myQueue, this_1.httpHeaders)
+                .then(function (data) { return __awaiter(_this, void 0, void 0, function () {
+                var _this = this;
                 return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, response.json()];
-                        case 1:
-                            results = _a.sent();
-                            if (response.ok) {
-                                setState(function (state) {
-                                    var newState = __assign({}, state);
-                                    for (var i_1 = 0; i_1 < results.length; i_1++) {
-                                        var item = results[i_1];
-                                        emitter.emit(item[0], { data: item[2], error: item[3] });
-                                        newState[item[0]] = {
-                                            loading: false,
-                                            error: item[3],
-                                            data: item[2]
-                                        };
-                                    }
-                                    return newState;
-                                });
-                            }
-                            else {
-                                error_1 = results || { status: response.status, message: response.statusText || 'Network error' };
-                                setState(function (state) {
-                                    var newState = __assign({}, state);
-                                    for (var i_2 = 0; i_2 < requestIds.length; i_2++) {
-                                        var id = requestIds[i_2];
-                                        emitter.emit(id, { data: null, error: error_1 });
-                                        newState[id] = {
-                                            loading: false,
-                                            error: error_1,
-                                            data: null
-                                        };
-                                    }
-                                    return newState;
-                                });
-                            }
-                            return [2 /*return*/];
-                    }
+                    data.forEach(function (r) {
+                        _this.emitter.emit(r[0], r[2], r[3]);
+                    });
+                    return [2 /*return*/];
                 });
             }); })
                 .catch(function (error) {
-                setState(function (state) {
-                    var newState = __assign({}, state);
-                    for (var i_3 = 0; i_3 < requestIds.length; i_3++) {
-                        var id = requestIds[i_3];
-                        emitter.emit(id, { data: null, error: error });
-                        newState[id] = {
-                            loading: false,
-                            error: error,
-                            data: null
-                        };
-                    }
-                    return newState;
+                myQueue.forEach(function (q) {
+                    _this.emitter.emit(q[0], null, error);
                 });
             });
         };
+        var this_1 = this;
         for (var i = 0; i < batchCount; i++) {
             _loop_1(i);
         }
-    }, [httpHeaders, maxBatchSize, bufferDelay]);
-    return (0, react_1.createElement)(BlestContext.Provider, { value: { queue: queue, state: state, enqueue: enqueue, ammend: ammend } }, children);
-}, function (oldProps, newProps) {
-    return oldProps.url === newProps.url && (0, isEqual_1.default)(oldProps.options, newProps.options) && (0, isEqual_1.default)(oldProps.children, newProps.children);
-});
-var withBlest = function (Component, url, options) {
-    return function (props) { return (0, react_1.createElement)(exports.BlestProvider, { url: url, options: options, children: (0, react_1.createElement)(Component, props) }); };
-};
-exports.withBlest = withBlest;
-var useBlestContext = function () {
-    var context = (0, react_1.useContext)(BlestContext);
-    (0, react_1.useEffect)(function () {
-        console.warn('useBlestContext() is a utility function for debugging');
-    }, []);
-    return context;
-};
-exports.useBlestContext = useBlestContext;
-var useBlestRequest = function (route, body, headers, options) {
-    var safeBody = useDeepMemo(body);
-    var safeHeaders = useDeepMemo(headers);
-    var safeOptions = useDeepMemo(options);
-    var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue, ammend = _a.ammend;
-    var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
-    var requestState = useDeepMemo(requestId && state[requestId]);
-    // useMemo(() => requestId && state[requestId], [requestId && JSON.stringify(state[requestId])])
-    var lastRequest = (0, react_1.useRef)(null);
-    var allRequestIds = (0, react_1.useRef)([]);
-    var doneRequestIds = (0, react_1.useRef)([]);
-    var callbacksById = (0, react_1.useRef)({});
-    (0, react_1.useEffect)(function () {
-        if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
-            return;
-        var requestHash = route + JSON.stringify(safeBody || {}) + JSON.stringify(safeHeaders || {}) + JSON.stringify(safeOptions || {});
-        if (lastRequest.current !== requestHash) {
-            lastRequest.current = requestHash;
-            var id = (0, uuid_1.v1)();
-            setRequestId(id);
-            allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
-            enqueue(id, route, safeBody, safeHeaders);
-        }
-    }, [route, safeBody, safeHeaders, safeOptions]);
-    var fetchMore = function (body, mergeFunction) {
-        return new Promise(function (resolve, reject) {
-            var _a;
-            if ((safeOptions && safeOptions.skip) ||
-                !requestId ||
-                doneRequestIds.current.indexOf(requestId) === -1)
-                return resolve(null);
-            var id = (0, uuid_1.v1)();
-            allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
-            callbacksById.current = __assign(__assign({}, callbacksById.current), (_a = {}, _a[id] = mergeFunction, _a));
-            enqueue(id, route, body, safeHeaders);
-            emitter.on(id, function (_a) {
-                var data = _a.data, error = _a.error;
-                if (error) {
-                    reject(error);
-                }
-                else if (data) {
-                    resolve(data);
-                }
-            });
-        });
     };
-    var refresh = function () {
+    HttpClient.prototype.set = function (option, value) {
+        var _a;
+        if (typeof option !== 'string')
+            throw new Error('Option name must be a string');
+        this.setOptions((_a = {}, _a[option] = value, _a));
+    };
+    HttpClient.prototype.request = function (route, body, headers) {
+        var _this = this;
         return new Promise(function (resolve, reject) {
-            if ((safeOptions && safeOptions.skip) ||
-                !requestId ||
-                doneRequestIds.current.indexOf(requestId) === -1)
-                return resolve(null);
-            var id = (0, uuid_1.v1)();
-            setRequestId(id);
-            enqueue(id, route, safeBody, safeHeaders);
-            emitter.on(id, function (_a) {
-                var data = _a.data, error = _a.error;
+            if (!route) {
+                return reject(new Error('Route is required'));
+            }
+            else if (body && typeof body !== 'object') {
+                return reject(new Error('Body should be an object'));
+            }
+            else if (headers && typeof headers !== 'object') {
+                return reject(new Error('Headers should be an object'));
+            }
+            var id = _this.idGenerator();
+            _this.emitter.once(id, function (result, error) {
                 if (error) {
                     reject(error);
                 }
                 else {
-                    resolve(data);
+                    resolve(result);
                 }
             });
+            _this.queue.push([id, route, body || null, headers || null]);
+            if (!_this.timeout) {
+                _this.timeout = setTimeout(function () { _this.process(); }, _this.bufferDelay);
+            }
+        });
+    };
+    return HttpClient;
+}());
+;
+var httpPostRequest = function (url_1, data_1) {
+    var args_1 = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+        args_1[_i - 2] = arguments[_i];
+    }
+    return __awaiter(void 0, __spreadArray([url_1, data_1], args_1, true), void 0, function (url, data, httpHeaders) {
+        var requestData, options, response;
+        if (httpHeaders === void 0) { httpHeaders = {}; }
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    requestData = JSON.stringify(data);
+                    options = {
+                        method: 'POST',
+                        body: requestData,
+                        mode: 'cors',
+                        headers: __assign(__assign({}, httpHeaders), { 'Accept': 'application/json', 'Content-Type': 'application/json' })
+                    };
+                    return [4 /*yield*/, fetch(url, options)];
+                case 1:
+                    response = _a.sent();
+                    if (!response.ok)
+                        throw new Error("HTTP POST request failed with status code ".concat(response.status));
+                    return [4 /*yield*/, response.json()];
+                case 2: return [2 /*return*/, _a.sent()];
+            }
+        });
+    });
+};
+var useBlestRequest = function (route, body, headers, options) {
+    var safeBody = useDeepMemo(body);
+    var safeHeaders = useDeepMemo(headers);
+    var safeOptions = useDeepMemo(options);
+    var client = (0, react_1.useContext)(BlestContext).client;
+    var _a = (0, react_1.useState)(!(options === null || options === void 0 ? void 0 : options.skip)), loading = _a[0], setLoading = _a[1];
+    var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
+    var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
+    var lastRequest = (0, react_1.useRef)('');
+    var doRequest = function (client, route, body, headers) {
+        setLoading(true);
+        return client.request(route, body, headers)
+            .then(function (data) {
+            setError(null);
+            setData(data);
+            return Promise.resolve(data);
+        })
+            .catch(function (error) {
+            setData(null);
+            setError(error);
+        })
+            .finally(function () {
+            setLoading(false);
         });
     };
     (0, react_1.useEffect)(function () {
-        var _a;
-        if (!requestId)
+        if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
             return;
-        for (var i = 0; i < allRequestIds.current.length; i++) {
-            var id = allRequestIds.current[i];
-            if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
-                doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
-                if (state[id].data && typeof callbacksById.current[id] === 'function') {
-                    ammend(requestId, callbacksById.current[id](requestId ? ((_a = state[requestId]) === null || _a === void 0 ? void 0 : _a.data) || {} : {}, state[id].data));
-                }
-            }
+        var requestHash = route + JSON.stringify(safeBody) + JSON.stringify(safeHeaders);
+        if (!lastRequest.current || lastRequest.current !== requestHash) {
+            lastRequest.current = requestHash;
+            if (!client)
+                throw new Error('Missing BLEST client in context');
+            doRequest(client, route, safeBody, safeHeaders);
         }
-    }, [requestState, requestId]);
-    return __assign(__assign({}, (requestState || { loading: true, error: null, data: null })), { fetchMore: fetchMore, refresh: refresh });
+    }, [client, route, safeBody, safeHeaders, safeOptions]);
+    var refresh = (0, react_1.useCallback)(function () {
+        if (!client)
+            throw new Error('Missing BLEST client in context');
+        return doRequest(client, route, safeBody, safeHeaders);
+    }, [client, route, safeBody, safeHeaders]);
+    return {
+        loading: loading,
+        error: error,
+        data: data,
+        refresh: refresh
+    };
 };
 exports.useBlestRequest = useBlestRequest;
 var useBlestLazyRequest = function (route, headers, options) {
     var safeHeaders = useDeepMemo(headers);
     var safeOptions = useDeepMemo(options);
-    var _a = (0, react_1.useContext)(BlestContext), state = _a.state, enqueue = _a.enqueue;
-    var _b = (0, react_1.useState)(null), requestId = _b[0], setRequestId = _b[1];
-    var requestState = useDeepMemo(requestId && state[requestId]);
-    // useMemo(() => requestId && state[requestId], [requestId && state[requestId]])
-    var allRequestIds = (0, react_1.useRef)([]);
-    var doneRequestIds = (0, react_1.useRef)([]);
-    var request = (0, react_1.useCallback)(function (body) {
-        return new Promise(function (resolve, reject) {
-            if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
-                return reject();
-            var id = (0, uuid_1.v1)();
-            setRequestId(id);
-            allRequestIds.current = __spreadArray(__spreadArray([], allRequestIds.current, true), [id], false);
-            enqueue(id, route, body, safeHeaders);
-            emitter.on(id, function (_a) {
-                var data = _a.data, error = _a.error;
-                if (error) {
-                    reject(error);
-                }
-                else {
-                    resolve(data);
-                }
-            });
+    var client = (0, react_1.useContext)(BlestContext).client;
+    var _a = (0, react_1.useState)(false), loading = _a[0], setLoading = _a[1];
+    var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
+    var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
+    var doRequest = function (client, route, body, headers) {
+        setLoading(true);
+        return client.request(route, body, headers)
+            .then(function (data) {
+            setError(null);
+            setData(data);
+            return Promise.resolve(data);
+        })
+            .catch(function (error) {
+            setData(null);
+            setError(error);
+        })
+            .finally(function () {
+            setLoading(false);
         });
-    }, [enqueue, route, safeHeaders, safeOptions]);
-    (0, react_1.useEffect)(function () {
-        for (var i = 0; i < allRequestIds.current.length; i++) {
-            var id = allRequestIds.current[i];
-            if (state[id] && (state[id].data || state[id].error) && doneRequestIds.current.indexOf(id) === -1) {
-                doneRequestIds.current = __spreadArray(__spreadArray([], doneRequestIds.current, true), [id], false);
-                if (safeOptions && safeOptions.onComplete && typeof safeOptions.onComplete === 'function') {
-                    safeOptions.onComplete(state[id].data, state[id].error);
-                }
-            }
-        }
-    }, [requestState, safeOptions]);
-    return [request, requestState || { loading: false, error: null, data: null }];
+    };
+    var request = (0, react_1.useCallback)(function (body) {
+        if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
+            return Promise.reject();
+        if (!client)
+            throw new Error('Missing BLEST client in context');
+        return doRequest(client, route, body, safeHeaders);
+    }, [client, route, safeHeaders]);
+    return [request, { loading: loading, error: error, data: data }];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
 exports.useRequest = exports.useBlestRequest;

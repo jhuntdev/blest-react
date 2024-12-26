@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BlestProvider, useBlestLazyRequest, useBlestRequest } from 'blest-react'
 
 function App() {
@@ -20,27 +20,23 @@ function App() {
 }
 
 const Component1 = () => {
-  const { data, error, loading, fetchMore } = useBlestRequest('hello')
-  const handleClick = () => {
-    fetchMore(
-      null,
-      (oldData, newData) => {
-        return { ...newData, count: oldData?.count ? oldData.count + 1 : 1 }
-      }
-    ).then(console.log.bind(null, 'fetchMore.then()')).catch(console.error.bind(null, 'fetchMore.catch()'))
-  }
+  const [count, setCount] = useState(0)
+  const { data, error, loading, refresh } = useBlestRequest('hello')
+  const handleClick = useCallback(() => {
+    setCount((count) => count + 1)
+    refresh().then(console.log.bind(null, 'refresh.then()')).catch(console.error.bind(null, 'refresh.catch()'))
+  }, [refresh])
   return (
     <div>
       <h3>{`["hello", null]`}</h3>
       <p>{loading ? 'Loading...' : error ? 'Error: ' + error.message : JSON.stringify(data)}</p>
-      {!loading && !error && <button onClick={handleClick}>Fetch More ({data?.count || 0})</button>}
+      {!loading && !error && <button onClick={handleClick}>Refresh ({count})</button>}
     </div>
   )
 }
 
 const Component2 = () => {
   const [name, setName] = useState('Steve')
-  // const headers = useRef({ auth: 'myToken' })
   const [greet, { data, error, loading }] = useBlestLazyRequest('greet', { auth: 'myToken' })
   useEffect(() => {
     greet({ name }).then(console.log.bind(null, 'greet.then()')).catch(console.error.bind(null, 'greet.catch()'))
