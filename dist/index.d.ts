@@ -47,7 +47,8 @@ declare class HttpClient {
     private timeout;
     private emitter;
     private idGenerator;
-    private setOptions;
+    setOptions(options?: ClientOptions): boolean;
+    setUrl(url?: string): void;
     constructor(url: string, options?: ClientOptions);
     private process;
     set(option: string, value: any): void;

@@ -124,7 +124,12 @@ var BlestProvider = function (_a) {
     (0, react_1.useEffect)(function () {
         setClient(new HttpClient(url, safeOptions));
     }, []);
-    // TODO: Update existing client if options change
+    (0, react_1.useEffect)(function () {
+        client === null || client === void 0 ? void 0 : client.setOptions(safeOptions);
+    }, [safeOptions]);
+    (0, react_1.useEffect)(function () {
+        client === null || client === void 0 ? void 0 : client.setUrl(url);
+    }, [url]);
     return client ? (0, react_1.createElement)(BlestContext.Provider, { value: { client: client } }, children) : (0, react_1.createElement)(react_1.Fragment);
 };
 exports.BlestProvider = BlestProvider;
@@ -172,6 +177,11 @@ var HttpClient = /** @class */ (function () {
             }
         }
         return false;
+    };
+    HttpClient.prototype.setUrl = function (url) {
+        if (url && typeof url === 'string') {
+            this.url = url;
+        }
     };
     HttpClient.prototype.process = function () {
         var _this = this;
