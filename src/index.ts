@@ -114,32 +114,35 @@ class HttpClient {
     private idGenerator: () => string = idGenerator;
 
     public setOptions(options?: ClientOptions) {
-        if (!options) {
-          return false;
-        } else if (typeof options !== 'object') {
-          throw new Error('Options should be an object');
-        } else {
-          if (options.httpHeaders) {
-            if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
-              throw new Error('"httpHeaders" option should be an object');
-            }
-          }
-          if (options.maxBatchSize) {
-            if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
-              throw new Error('"maxBatchSize" option should be an integer');
-            } else if (options.maxBatchSize < 1) {
-              throw new Error('"maxBatchSize" option should be greater than or equal to one');
-            }
-          }
-          if (options.bufferDelay) {
-            if (typeof options.bufferDelay !== 'number' || Math.round(options.bufferDelay) !== options.bufferDelay) {
-              throw new Error('"bufferDelay" option should be an integer');
-            } else if (options.bufferDelay < 0) {
-              throw new Error('"bufferDelay" option should be greater than or equal to zero');
-            }
-          }
-        }
+      if (!options) {
         return false;
+      } else if (typeof options !== 'object') {
+        throw new Error('Options should be an object');
+      } else {
+        if (options.httpHeaders) {
+          if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
+            throw new Error('"httpHeaders" option should be an object');
+          }
+          this.httpHeaders = options.httpHeaders
+        }
+        if (options.maxBatchSize) {
+          if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
+            throw new Error('"maxBatchSize" option should be an integer');
+          } else if (options.maxBatchSize < 1) {
+            throw new Error('"maxBatchSize" option should be greater than or equal to one');
+          }
+          this.maxBatchSize = options.maxBatchSize
+        }
+        if (options.bufferDelay) {
+          if (typeof options.bufferDelay !== 'number' || Math.round(options.bufferDelay) !== options.bufferDelay) {
+            throw new Error('"bufferDelay" option should be an integer');
+          } else if (options.bufferDelay < 0) {
+            throw new Error('"bufferDelay" option should be greater than or equal to zero');
+          }
+          this.bufferDelay = options.bufferDelay
+        }
+      }
+      return false;
     }
 
     public setUrl(url?:string) {

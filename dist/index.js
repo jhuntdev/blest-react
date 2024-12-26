@@ -158,6 +158,7 @@ var HttpClient = /** @class */ (function () {
                 if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
                     throw new Error('"httpHeaders" option should be an object');
                 }
+                this.httpHeaders = options.httpHeaders;
             }
             if (options.maxBatchSize) {
                 if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
@@ -166,6 +167,7 @@ var HttpClient = /** @class */ (function () {
                 else if (options.maxBatchSize < 1) {
                     throw new Error('"maxBatchSize" option should be greater than or equal to one');
                 }
+                this.maxBatchSize = options.maxBatchSize;
             }
             if (options.bufferDelay) {
                 if (typeof options.bufferDelay !== 'number' || Math.round(options.bufferDelay) !== options.bufferDelay) {
@@ -174,6 +176,7 @@ var HttpClient = /** @class */ (function () {
                 else if (options.bufferDelay < 0) {
                     throw new Error('"bufferDelay" option should be greater than or equal to zero');
                 }
+                this.bufferDelay = options.bufferDelay;
             }
         }
         return false;
