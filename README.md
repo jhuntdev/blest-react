@@ -41,20 +41,6 @@ const App = () => {
   )
 }
 ```
-Or use the `withBlest` HOC to achieve the same effect.
-
-```javascript
-import React from 'react'
-import { BlestProvider } from 'blest-react'
-
-const App = () => {
-  return (
-    // Your app here
-  )
-}
-
-export default withBlest(App, 'http://localhost:8080', { maxBatchSize: 25, bufferDelay: 10, headers: { Authorization: 'Bearer token' } })
-```
 
 Use the `useBlestRequest` hook to perform passive requests on mount and when parameters change.
 
