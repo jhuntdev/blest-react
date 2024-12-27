@@ -60,7 +60,7 @@ const MyComponent = () => {
   const { data, loading, error } = useBlestRequest(
     'listItems', // route
     { limit: 24 }, // body
-    { select: ['id', 'name', ['category', ['name']]], skip: false } // options
+    { select: ['edges', ['pageInfo', ['endCursor', 'hasNextPage']]] } // options
   )
 
   return (
