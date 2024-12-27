@@ -11,11 +11,13 @@ export interface BlestProviderOptions {
     bufferDelay?: number;
     httpHeaders?: any;
 }
+export type BlestSelector = Array<string | BlestSelector>;
 export interface BlestRequestOptions {
     skip?: boolean;
+    select?: BlestSelector;
 }
 export interface BlestLazyRequestOptions {
-    skip?: boolean;
+    select?: BlestSelector;
 }
 export declare class EventEmitter {
     runByEvent: any;
@@ -57,8 +59,8 @@ declare class HttpClient {
 interface BlestRequestHookReturn extends BlestRequestState {
     refresh: () => Promise<any>;
 }
-export declare const useBlestRequest: (route: string, body?: any, headers?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;
-export declare const useBlestLazyRequest: (route: string, headers?: any, options?: BlestLazyRequestOptions) => [(body?: any) => Promise<any>, BlestRequestState];
-export declare const useRequest: (route: string, body?: any, headers?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;
-export declare const useLazyRequest: (route: string, headers?: any, options?: BlestLazyRequestOptions) => [(body?: any) => Promise<any>, BlestRequestState];
+export declare const useBlestRequest: (route: string, body?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;
+export declare const useBlestLazyRequest: (route: string, options?: BlestLazyRequestOptions) => [(body?: any) => Promise<any>, BlestRequestState];
+export declare const useRequest: (route: string, body?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;
+export declare const useLazyRequest: (route: string, options?: BlestLazyRequestOptions) => [(body?: any) => Promise<any>, BlestRequestState];
 export {};

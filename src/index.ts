@@ -24,12 +24,15 @@ export interface BlestProviderOptions {
   httpHeaders?: any
 }
 
+export type BlestSelector = Array<string | BlestSelector>
+
 export interface BlestRequestOptions {
   skip?: boolean
+  select?: BlestSelector
 }
 
 export interface BlestLazyRequestOptions {
-  skip?: boolean
+  select?: BlestSelector
 }
 
 export class EventEmitter {
@@ -238,10 +241,18 @@ interface BlestRequestHookReturn extends BlestRequestState {
   refresh: () => Promise<any>
 }
 
-export const useBlestRequest = (route: string, body?: any, headers?: any, options?: BlestRequestOptions): BlestRequestHookReturn => {
+const makeBlestHeaders = (options?: BlestRequestOptions|BlestLazyRequestOptions) => {
+  const headers:any = {}
+  if (!options) return headers;
+  if (options.select && Array.isArray(options.select)) {
+    headers._s = options.select
+  }
+  return headers
+}
+
+export const useBlestRequest = (route: string, body?: any, options?: BlestRequestOptions): BlestRequestHookReturn => {
 
   const safeBody = useDeepMemo(body);
-  const safeHeaders = useDeepMemo(headers);
   const safeOptions = useDeepMemo(options);
   const { client } = useContext(BlestContext);
   const [loading, setLoading] = useState(!options?.skip);
@@ -268,18 +279,20 @@ export const useBlestRequest = (route: string, body?: any, headers?: any, option
 
   useEffect(() => {
     if (safeOptions?.skip) return;
-    const requestHash = route + JSON.stringify(safeBody) + JSON.stringify(safeHeaders);
+    const requestHash = route + JSON.stringify(safeBody);
     if (!lastRequest.current || lastRequest.current !== requestHash) {
       lastRequest.current = requestHash;
       if (!client) throw new Error('Missing BLEST client in context');
-      doRequest(client, route, safeBody, safeHeaders);
+      const headers = makeBlestHeaders(safeOptions);
+      doRequest(client, route, safeBody, headers);
     }
-  }, [client, route, safeBody, safeHeaders, safeOptions]);
+  }, [client, route, safeBody, safeOptions]);
 
   const refresh = useCallback(() => {
     if (!client) throw new Error('Missing BLEST client in context');
-    return doRequest(client, route, safeBody, safeHeaders);
-  }, [client, route, safeBody, safeHeaders]);
+    const headers = makeBlestHeaders(safeOptions);
+    return doRequest(client, route, safeBody, headers);
+  }, [client, route, safeBody, safeOptions]);
 
   return {
     loading,
@@ -290,9 +303,8 @@ export const useBlestRequest = (route: string, body?: any, headers?: any, option
 
 }
 
-export const useBlestLazyRequest = (route: string, headers?: any, options?: BlestLazyRequestOptions): [(body?: any) => Promise<any>, BlestRequestState] => {
+export const useBlestLazyRequest = (route: string, options?: BlestLazyRequestOptions): [(body?: any) => Promise<any>, BlestRequestState] => {
   
-  const safeHeaders = useDeepMemo(headers);
   const safeOptions = useDeepMemo(options);
   const { client } = useContext(BlestContext);
   const [loading, setLoading] = useState(false);
@@ -317,10 +329,10 @@ export const useBlestLazyRequest = (route: string, headers?: any, options?: Bles
   }
 
   const request = useCallback((body?: any) => {
-    if (safeOptions?.skip) return Promise.reject();
     if (!client) throw new Error('Missing BLEST client in context');
-    return doRequest(client, route, body, safeHeaders);
-  }, [client, route, safeHeaders]);
+    const headers = makeBlestHeaders(safeOptions);
+    return doRequest(client, route, body, headers);
+  }, [client, route]);
 
   return [request, { loading, error, data }];
 

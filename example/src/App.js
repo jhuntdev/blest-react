@@ -37,7 +37,7 @@ const Component1 = () => {
 
 const Component2 = () => {
   const [name, setName] = useState('Steve')
-  const [greet, { data, error, loading }] = useBlestLazyRequest('greet', { auth: 'myToken' })
+  const [greet, { data, error, loading }] = useBlestLazyRequest('greet', { select: ['greeting'] })
   useEffect(() => {
     greet({ name }).then(console.log.bind(null, 'greet.then()')).catch(console.error.bind(null, 'greet.catch()'))
   }, [greet, name])

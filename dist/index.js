@@ -286,9 +286,17 @@ var httpPostRequest = function (url_1, data_1) {
         });
     });
 };
-var useBlestRequest = function (route, body, headers, options) {
+var makeBlestHeaders = function (options) {
+    var headers = {};
+    if (!options)
+        return headers;
+    if (options.select && Array.isArray(options.select)) {
+        headers._s = options.select;
+    }
+    return headers;
+};
+var useBlestRequest = function (route, body, options) {
     var safeBody = useDeepMemo(body);
-    var safeHeaders = useDeepMemo(headers);
     var safeOptions = useDeepMemo(options);
     var client = (0, react_1.useContext)(BlestContext).client;
     var _a = (0, react_1.useState)(!(options === null || options === void 0 ? void 0 : options.skip)), loading = _a[0], setLoading = _a[1];
@@ -314,19 +322,21 @@ var useBlestRequest = function (route, body, headers, options) {
     (0, react_1.useEffect)(function () {
         if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
             return;
-        var requestHash = route + JSON.stringify(safeBody) + JSON.stringify(safeHeaders);
+        var requestHash = route + JSON.stringify(safeBody);
         if (!lastRequest.current || lastRequest.current !== requestHash) {
             lastRequest.current = requestHash;
             if (!client)
                 throw new Error('Missing BLEST client in context');
-            doRequest(client, route, safeBody, safeHeaders);
+            var headers = makeBlestHeaders(safeOptions);
+            doRequest(client, route, safeBody, headers);
         }
-    }, [client, route, safeBody, safeHeaders, safeOptions]);
+    }, [client, route, safeBody, safeOptions]);
     var refresh = (0, react_1.useCallback)(function () {
         if (!client)
             throw new Error('Missing BLEST client in context');
-        return doRequest(client, route, safeBody, safeHeaders);
-    }, [client, route, safeBody, safeHeaders]);
+        var headers = makeBlestHeaders(safeOptions);
+        return doRequest(client, route, safeBody, headers);
+    }, [client, route, safeBody, safeOptions]);
     return {
         loading: loading,
         error: error,
@@ -335,8 +345,7 @@ var useBlestRequest = function (route, body, headers, options) {
     };
 };
 exports.useBlestRequest = useBlestRequest;
-var useBlestLazyRequest = function (route, headers, options) {
-    var safeHeaders = useDeepMemo(headers);
+var useBlestLazyRequest = function (route, options) {
     var safeOptions = useDeepMemo(options);
     var client = (0, react_1.useContext)(BlestContext).client;
     var _a = (0, react_1.useState)(false), loading = _a[0], setLoading = _a[1];
@@ -359,12 +368,11 @@ var useBlestLazyRequest = function (route, headers, options) {
         });
     };
     var request = (0, react_1.useCallback)(function (body) {
-        if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
-            return Promise.reject();
         if (!client)
             throw new Error('Missing BLEST client in context');
-        return doRequest(client, route, body, safeHeaders);
-    }, [client, route, safeHeaders]);
+        var headers = makeBlestHeaders(safeOptions);
+        return doRequest(client, route, body, headers);
+    }, [client, route]);
     return [request, { loading: loading, error: error, data: data }];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;

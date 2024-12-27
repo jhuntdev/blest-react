@@ -33,9 +33,18 @@ Wrap your app (or just part of it) with `BlestProvider`.
 import React from 'react'
 import { BlestProvider } from 'blest-react'
 
+const blestOptions = {
+  maxBatchSize: 25,
+  bufferDelay: 10,
+  httpHeaders: { Authorization: 'Bearer token' }
+}
+
 const App = () => {
   return (
-    <BlestProvider url='http://localhost:8080' options={{ maxBatchSize: 25, bufferDelay: 10, httpHeaders: { Authorization: 'Bearer token' } }}>
+    <BlestProvider
+      url='http://localhost:8080'
+      options={blestOptions}
+    >
       {/* Your app here */}
     </BlestProvider>
   )
@@ -48,7 +57,11 @@ Use the `useBlestRequest` hook to perform passive requests on mount and when par
 import { useBlestRequest } from 'blest-react'
 
 const MyComponent = () => {
-  const { data, loading, error } = useBlestRequest('listItems', { limit: 24 }, { auth: 'myToken' })
+  const { data, loading, error } = useBlestRequest(
+    'listItems', // route
+    { limit: 24 }, // body
+    { select: ['id', 'name', ['category', ['name']]], skip: false } // options
+  )
 
   return (
     // Your component here
@@ -62,7 +75,10 @@ Use the `useBlestLazyRequest` hook to generate a request function you can call w
 import { useBlestLazyRequest } from 'blest-react'
 
 const MyForm = () => {
-  const [submitForm, { data, loading, error }] = useBlestLazyRequest('submitForm')
+  const [submitForm, { data, loading, error }] = useBlestLazyRequest(
+    'submitForm', // route
+    { select: ['success'] } // options
+  )
 
   const handleSubmit = (values) => {
     submitForm(values)
