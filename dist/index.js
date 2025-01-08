@@ -314,6 +314,7 @@ var useBlestRequest = function (route, body, options) {
             .catch(function (error) {
             setData(null);
             setError(error);
+            return Promise.reject(error);
         })
             .finally(function () {
             setLoading(false);
@@ -362,6 +363,7 @@ var useBlestLazyRequest = function (route, options) {
             .catch(function (error) {
             setData(null);
             setError(error);
+            return Promise.reject(error);
         })
             .finally(function () {
             setLoading(false);
