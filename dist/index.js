@@ -304,20 +304,22 @@ var useBlestRequest = function (route, body, options) {
     var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
     var lastRequest = (0, react_1.useRef)('');
     var doRequest = function (client, route, body, headers) {
-        setLoading(true);
-        return client.request(route, body, headers)
-            .then(function (data) {
-            setError(null);
-            setData(data);
-            return Promise.resolve(data);
-        })
-            .catch(function (error) {
-            setData(null);
-            setError(error);
-            return Promise.reject(error);
-        })
-            .finally(function () {
-            setLoading(false);
+        return new Promise(function (resolve, reject) {
+            setLoading(true);
+            client.request(route, body, headers)
+                .then(function (data) {
+                setError(null);
+                setData(data);
+                resolve(data);
+            })
+                .catch(function (error) {
+                setData(null);
+                setError(error);
+                reject(error);
+            })
+                .finally(function () {
+                setLoading(false);
+            });
         });
     };
     (0, react_1.useEffect)(function () {
@@ -329,7 +331,7 @@ var useBlestRequest = function (route, body, options) {
             if (!client)
                 throw new Error('Missing BLEST client in context');
             var headers = makeBlestHeaders(safeOptions);
-            doRequest(client, route, safeBody, headers);
+            doRequest(client, route, safeBody, headers).catch(console.error);
         }
     }, [client, route, safeBody, safeOptions]);
     var refresh = (0, react_1.useCallback)(function () {
@@ -353,20 +355,22 @@ var useBlestLazyRequest = function (route, options) {
     var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
     var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
     var doRequest = function (client, route, body, headers) {
-        setLoading(true);
-        return client.request(route, body, headers)
-            .then(function (data) {
-            setError(null);
-            setData(data);
-            return Promise.resolve(data);
-        })
-            .catch(function (error) {
-            setData(null);
-            setError(error);
-            return Promise.reject(error);
-        })
-            .finally(function () {
-            setLoading(false);
+        return new Promise(function (resolve, reject) {
+            setLoading(true);
+            client.request(route, body, headers)
+                .then(function (data) {
+                setError(null);
+                setData(data);
+                resolve(data);
+            })
+                .catch(function (error) {
+                setData(null);
+                setError(error);
+                reject(error);
+            })
+                .finally(function () {
+                setLoading(false);
+            });
         });
     };
     var request = (0, react_1.useCallback)(function (body) {

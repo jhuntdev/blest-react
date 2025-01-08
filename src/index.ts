@@ -287,7 +287,7 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
       lastRequest.current = requestHash;
       if (!client) throw new Error('Missing BLEST client in context');
       const headers = makeBlestHeaders(safeOptions);
-      doRequest(client, route, safeBody, headers).catch(() => {});
+      doRequest(client, route, safeBody, headers).catch(console.error);
     }
   }, [client, route, safeBody, safeOptions]);
 
