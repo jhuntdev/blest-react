@@ -261,22 +261,18 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
   const lastRequest = useRef<string>('');
 
   const doRequest = (client: HttpClient, route: string, body?: any, headers?: any) => {
-    return new Promise((resolve, reject) => {
-      setLoading(true);
-      client.request(route, body, headers)
-      .then((data) => {
-        setError(null);
-        setData(data);
-        resolve(data);
-      })
-      .catch((error) => {
-        setData(null);
-        setError(error);
-        reject(error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    setLoading(true);
+    client.request(route, body, headers)
+    .then((data) => {
+      setError(null);
+      setData(data);
+    })
+    .catch((error) => {
+      setData(null);
+      setError(error);
+    })
+    .finally(() => {
+      setLoading(false);
     });
   }
 
