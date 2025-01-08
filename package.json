@@ -1,6 +1,6 @@
 {
   "name": "blest-react",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "A React client for BLEST (Batch-able, Lightweight, Encrypted State Transfer), an improved communication protocol for web APIs which leverages JSON, supports request batching by default, and provides a modern alternative to REST.",
   "keywords": [
     "blest",
