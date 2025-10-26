@@ -1,6 +1,6 @@
 {
   "name": "blest-react",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "A React client for BLEST (Batch-able, Lightweight, Encrypted State Transfer), an improved communication protocol for web APIs which leverages JSON, supports request batching by default, and provides a modern alternative to REST.",
   "keywords": [
     "blest",
@@ -38,9 +38,9 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.13",
-    "@types/react": "^19.0.2",
-    "react": "^19.0.0",
-    "typescript": "^5.7.2"
+    "@types/lodash": "^4.17.20",
+    "@types/react": "^19.2.2",
+    "react": "^19.2.0",
+    "typescript": "^5.9.3"
   }
 }

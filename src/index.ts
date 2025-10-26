@@ -21,10 +21,12 @@ interface BlestContextValue {
 export interface BlestProviderOptions {
   maxBatchSize?: number
   bufferDelay?: number
-  httpHeaders?: any
+  httpHeaders?: { [key: string]: any }
+  errorHandler?: (error: any, queue: any[][], retry: () => void) => any
+  idGenerator?: () => string
 }
 
-export type BlestSelector = Array<string | BlestSelector>
+export type BlestSelector = Array<string|BlestSelector>
 
 export interface BlestRequestOptions {
   skip?: boolean
@@ -98,12 +100,7 @@ export const BlestProvider = ({ children, url, options = {} }: { children: any, 
 
 }
 
-export interface ClientOptions {
-    httpHeaders?: any
-    maxBatchSize?: number
-    bufferDelay?: number
-    idGenerator?: () => string
-}
+export interface ClientOptions extends BlestProviderOptions {}
 
 class HttpClient {
 
@@ -115,6 +112,7 @@ class HttpClient {
     private timeout: ReturnType<typeof setTimeout> | null = null;
     private emitter = new EventEmitter();
     private idGenerator: () => string = idGenerator;
+    private errorHandler?: (error: any, queue: any[][], retry: () => void) => void;
 
     public setOptions(options?: ClientOptions) {
       if (!options) {
@@ -122,12 +120,6 @@ class HttpClient {
       } else if (typeof options !== 'object') {
         throw new Error('Options should be an object');
       } else {
-        if (options.httpHeaders) {
-          if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
-            throw new Error('"httpHeaders" option should be an object');
-          }
-          this.httpHeaders = options.httpHeaders
-        }
         if (options.maxBatchSize) {
           if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
             throw new Error('"maxBatchSize" option should be an integer');
@@ -144,6 +136,24 @@ class HttpClient {
           }
           this.bufferDelay = options.bufferDelay
         }
+        if (options.httpHeaders) {
+          if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
+            throw new Error('"httpHeaders" option should be an object');
+          }
+          this.httpHeaders = options.httpHeaders
+        }
+        if (options.idGenerator) {
+          if (typeof options.idGenerator !== 'function') {
+            throw new Error('"idGenerator" option should be a function');
+          }
+          this.idGenerator = options.idGenerator
+        }
+        if (options.errorHandler) {
+          if (typeof options.errorHandler !== 'function') {
+            throw new Error('"errorHandler" option should be a function');
+          }
+          this.errorHandler = options.errorHandler
+        }
       }
       return false;
     }
@@ -159,6 +169,29 @@ class HttpClient {
         this.setOptions(options);
     }
 
+    private doHttpRequest = (queue: any[][], isRetry: boolean = false) => {
+      httpPostRequest(this.url, queue, this.httpHeaders)
+      .then(async (data: any) => {
+          data.forEach((r: any) => {
+              this.emitter.emit(r[0], r[2], r[3]);
+          });
+      })
+      .catch(async (error: any) => {
+        let skipEmit = false
+        if (!isRetry && this.errorHandler) {
+          await Promise.resolve(this.errorHandler(error, queue, () => {
+            skipEmit = true;
+            this.retry(queue);
+          })).catch(console.error);
+        }
+        if (!skipEmit) {
+          queue.forEach((q) => {
+            this.emitter.emit(q[0], null, error);
+          });
+        }
+      });
+    }
+
     private process() {
         if (this.timeout) {
             clearTimeout(this.timeout)
@@ -172,23 +205,17 @@ class HttpClient {
         const batchCount = Math.ceil(copyQueue.length / this.maxBatchSize)
         for (let i = 0; i < batchCount; i++) {
             const myQueue = copyQueue.slice(i * this.maxBatchSize, (i + 1) * this.maxBatchSize)
-            httpPostRequest(this.url, myQueue, this.httpHeaders)
-            .then(async (data: any) => {
-                data.forEach((r: any) => {
-                    this.emitter.emit(r[0], r[2], r[3]);
-                });
-            })
-            .catch((error: any) => {
-                myQueue.forEach((q) => {
-                    this.emitter.emit(q[0], null, error);
-                });
-            });
+            this.doHttpRequest(myQueue);
         }
     }
 
     public set(option: string, value: any) {
       if (typeof option !== 'string') throw new Error('Option name must be a string')
       this.setOptions({ [option]: value })
+    }
+
+    private retry(queue: any[][]) {
+      this.doHttpRequest(queue, true);
     }
 
     public request(route: string, body: object | null, headers: object | null) {
@@ -260,7 +287,7 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
   const [data, setData] = useState<any>(null);
   const lastRequest = useRef<string>('');
 
-  const doRequest = (client: HttpClient, route: string, body?: any, headers?: any) => {
+  const doRequest = useCallback((client: HttpClient, route: string, body?: any, headers?: any) => {
     return new Promise((resolve, reject) => {
       setLoading(true);
       client.request(route, body, headers)
@@ -278,7 +305,7 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
         setLoading(false);
       });
     });
-  }
+  }, []);
 
   useEffect(() => {
     if (safeOptions?.skip) return;
@@ -314,7 +341,7 @@ export const useBlestLazyRequest = (route: string, options?: BlestLazyRequestOpt
   const [error, setError] = useState<any>(null);
   const [data, setData] = useState<any>(null);
 
-  const doRequest = (client: HttpClient, route: string, body?: any, headers?: any) => {
+  const doRequest = useCallback((client: HttpClient, route: string, body?: any, headers?: any) => {
     return new Promise((resolve, reject) => {
       setLoading(true);
       client.request(route, body, headers)
@@ -332,7 +359,7 @@ export const useBlestLazyRequest = (route: string, options?: BlestLazyRequestOpt
         setLoading(false);
       });
     });
-  }
+  }, []);
 
   const request = useCallback((body?: any) => {
     if (!client) throw new Error('Missing BLEST client in context');

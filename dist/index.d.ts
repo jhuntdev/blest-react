@@ -9,7 +9,11 @@ interface BlestContextValue {
 export interface BlestProviderOptions {
     maxBatchSize?: number;
     bufferDelay?: number;
-    httpHeaders?: any;
+    httpHeaders?: {
+        [key: string]: any;
+    };
+    errorHandler?: (error: any, queue: any[][], retry: () => void) => any;
+    idGenerator?: () => string;
 }
 export type BlestSelector = Array<string | BlestSelector>;
 export interface BlestRequestOptions {
@@ -31,14 +35,8 @@ export declare const BlestProvider: ({ children, url, options }: {
     children: any;
     url: string;
     options?: BlestProviderOptions;
-}) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>> | import("react").FunctionComponentElement<{
-    children?: import("react").ReactNode | undefined;
-}>;
-export interface ClientOptions {
-    httpHeaders?: any;
-    maxBatchSize?: number;
-    bufferDelay?: number;
-    idGenerator?: () => string;
+}) => import("react").FunctionComponentElement<import("react").ProviderProps<BlestContextValue>> | import("react").FunctionComponentElement<import("react").FragmentProps>;
+export interface ClientOptions extends BlestProviderOptions {
 }
 declare class HttpClient {
     private url;
@@ -49,11 +47,14 @@ declare class HttpClient {
     private timeout;
     private emitter;
     private idGenerator;
+    private errorHandler?;
     setOptions(options?: ClientOptions): boolean;
     setUrl(url?: string): void;
     constructor(url: string, options?: ClientOptions);
+    private doHttpRequest;
     private process;
     set(option: string, value: any): void;
+    private retry;
     request(route: string, body: object | null, headers: object | null): Promise<unknown>;
 }
 interface BlestRequestHookReturn extends BlestRequestState {

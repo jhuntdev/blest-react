@@ -135,6 +135,7 @@ var BlestProvider = function (_a) {
 exports.BlestProvider = BlestProvider;
 var HttpClient = /** @class */ (function () {
     function HttpClient(url, options) {
+        var _this = this;
         this.url = '';
         this.httpHeaders = {};
         this.maxBatchSize = 25;
@@ -143,6 +144,44 @@ var HttpClient = /** @class */ (function () {
         this.timeout = null;
         this.emitter = new EventEmitter();
         this.idGenerator = idGenerator;
+        this.doHttpRequest = function (queue, isRetry) {
+            if (isRetry === void 0) { isRetry = false; }
+            httpPostRequest(_this.url, queue, _this.httpHeaders)
+                .then(function (data) { return __awaiter(_this, void 0, void 0, function () {
+                var _this = this;
+                return __generator(this, function (_a) {
+                    data.forEach(function (r) {
+                        _this.emitter.emit(r[0], r[2], r[3]);
+                    });
+                    return [2 /*return*/];
+                });
+            }); })
+                .catch(function (error) { return __awaiter(_this, void 0, void 0, function () {
+                var skipEmit;
+                var _this = this;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            skipEmit = false;
+                            if (!(!isRetry && this.errorHandler)) return [3 /*break*/, 2];
+                            return [4 /*yield*/, Promise.resolve(this.errorHandler(error, queue, function () {
+                                    skipEmit = true;
+                                    _this.retry(queue);
+                                })).catch(console.error)];
+                        case 1:
+                            _a.sent();
+                            _a.label = 2;
+                        case 2:
+                            if (!skipEmit) {
+                                queue.forEach(function (q) {
+                                    _this.emitter.emit(q[0], null, error);
+                                });
+                            }
+                            return [2 /*return*/];
+                    }
+                });
+            }); });
+        };
         this.url = url;
         this.setOptions(options);
     }
@@ -154,12 +193,6 @@ var HttpClient = /** @class */ (function () {
             throw new Error('Options should be an object');
         }
         else {
-            if (options.httpHeaders) {
-                if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
-                    throw new Error('"httpHeaders" option should be an object');
-                }
-                this.httpHeaders = options.httpHeaders;
-            }
             if (options.maxBatchSize) {
                 if (typeof options.maxBatchSize !== 'number' || Math.round(options.maxBatchSize) !== options.maxBatchSize) {
                     throw new Error('"maxBatchSize" option should be an integer');
@@ -178,6 +211,24 @@ var HttpClient = /** @class */ (function () {
                 }
                 this.bufferDelay = options.bufferDelay;
             }
+            if (options.httpHeaders) {
+                if (typeof options.httpHeaders !== 'object' || Array.isArray(options.httpHeaders)) {
+                    throw new Error('"httpHeaders" option should be an object');
+                }
+                this.httpHeaders = options.httpHeaders;
+            }
+            if (options.idGenerator) {
+                if (typeof options.idGenerator !== 'function') {
+                    throw new Error('"idGenerator" option should be a function');
+                }
+                this.idGenerator = options.idGenerator;
+            }
+            if (options.errorHandler) {
+                if (typeof options.errorHandler !== 'function') {
+                    throw new Error('"errorHandler" option should be a function');
+                }
+                this.errorHandler = options.errorHandler;
+            }
         }
         return false;
     };
@@ -187,7 +238,6 @@ var HttpClient = /** @class */ (function () {
         }
     };
     HttpClient.prototype.process = function () {
-        var _this = this;
         if (this.timeout) {
             clearTimeout(this.timeout);
             this.timeout = null;
@@ -198,27 +248,9 @@ var HttpClient = /** @class */ (function () {
         var copyQueue = this.queue.map(function (q) { return __spreadArray([], q, true); });
         this.queue = [];
         var batchCount = Math.ceil(copyQueue.length / this.maxBatchSize);
-        var _loop_1 = function (i) {
-            var myQueue = copyQueue.slice(i * this_1.maxBatchSize, (i + 1) * this_1.maxBatchSize);
-            httpPostRequest(this_1.url, myQueue, this_1.httpHeaders)
-                .then(function (data) { return __awaiter(_this, void 0, void 0, function () {
-                var _this = this;
-                return __generator(this, function (_a) {
-                    data.forEach(function (r) {
-                        _this.emitter.emit(r[0], r[2], r[3]);
-                    });
-                    return [2 /*return*/];
-                });
-            }); })
-                .catch(function (error) {
-                myQueue.forEach(function (q) {
-                    _this.emitter.emit(q[0], null, error);
-                });
-            });
-        };
-        var this_1 = this;
         for (var i = 0; i < batchCount; i++) {
-            _loop_1(i);
+            var myQueue = copyQueue.slice(i * this.maxBatchSize, (i + 1) * this.maxBatchSize);
+            this.doHttpRequest(myQueue);
         }
     };
     HttpClient.prototype.set = function (option, value) {
@@ -226,6 +258,9 @@ var HttpClient = /** @class */ (function () {
         if (typeof option !== 'string')
             throw new Error('Option name must be a string');
         this.setOptions((_a = {}, _a[option] = value, _a));
+    };
+    HttpClient.prototype.retry = function (queue) {
+        this.doHttpRequest(queue, true);
     };
     HttpClient.prototype.request = function (route, body, headers) {
         var _this = this;
@@ -303,7 +338,7 @@ var useBlestRequest = function (route, body, options) {
     var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
     var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
     var lastRequest = (0, react_1.useRef)('');
-    var doRequest = function (client, route, body, headers) {
+    var doRequest = (0, react_1.useCallback)(function (client, route, body, headers) {
         return new Promise(function (resolve, reject) {
             setLoading(true);
             client.request(route, body, headers)
@@ -321,7 +356,7 @@ var useBlestRequest = function (route, body, options) {
                 setLoading(false);
             });
         });
-    };
+    }, []);
     (0, react_1.useEffect)(function () {
         if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
             return;
@@ -354,7 +389,7 @@ var useBlestLazyRequest = function (route, options) {
     var _a = (0, react_1.useState)(false), loading = _a[0], setLoading = _a[1];
     var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
     var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
-    var doRequest = function (client, route, body, headers) {
+    var doRequest = (0, react_1.useCallback)(function (client, route, body, headers) {
         return new Promise(function (resolve, reject) {
             setLoading(true);
             client.request(route, body, headers)
@@ -372,7 +407,7 @@ var useBlestLazyRequest = function (route, options) {
                 setLoading(false);
             });
         });
-    };
+    }, []);
     var request = (0, react_1.useCallback)(function (body) {
         if (!client)
             throw new Error('Missing BLEST client in context');
