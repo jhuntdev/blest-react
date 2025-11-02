@@ -32,11 +32,17 @@ Wrap your app (or just part of it) with `BlestProvider`.
 ```javascript
 import React from 'react'
 import { BlestProvider } from 'blest-react'
+import { uuidv9 } from 'uuid-v9'
 
-const blestOptions = {
+const blestOptions = { // all optional
   maxBatchSize: 25,
   bufferDelay: 10,
   httpHeaders: { Authorization: 'Bearer token' }
+  errorHandler: (error, retry) => {
+    console.error(error)
+    retry()
+  }
+  idGenerator: uuidv9
 }
 
 const App = () => {

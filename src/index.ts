@@ -22,7 +22,7 @@ export interface BlestProviderOptions {
   maxBatchSize?: number
   bufferDelay?: number
   httpHeaders?: { [key: string]: any }
-  errorHandler?: (error: any, queue: any[][], retry: () => void) => any
+  errorHandler?: (error: any, retry: () => void) => any
   idGenerator?: () => string
 }
 
@@ -112,7 +112,7 @@ class HttpClient {
     private timeout: ReturnType<typeof setTimeout> | null = null;
     private emitter = new EventEmitter();
     private idGenerator: () => string = idGenerator;
-    private errorHandler?: (error: any, queue: any[][], retry: () => void) => void;
+    private errorHandler?: (error: any, retry: () => void) => void;
 
     public setOptions(options?: ClientOptions) {
       if (!options) {
@@ -179,7 +179,7 @@ class HttpClient {
       .catch(async (error: any) => {
         let skipEmit = false
         if (!isRetry && this.errorHandler) {
-          await Promise.resolve(this.errorHandler(error, queue, () => {
+          await Promise.resolve(this.errorHandler(error, () => {
             skipEmit = true;
             this.retry(queue);
           })).catch(console.error);
