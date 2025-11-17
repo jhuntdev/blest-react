@@ -30,7 +30,7 @@ const Component1 = () => {
     <div>
       <h3>{`["hello", null]`}</h3>
       <p>{loading ? 'Loading...' : error ? 'Error: ' + error.message : JSON.stringify(data)}</p>
-      {!loading && !error && <button onClick={handleClick}>Refresh ({count})</button>}
+      <button onClick={handleClick} disabled={loading || error}>Refresh ({count})</button>
     </div>
   )
 }

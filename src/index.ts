@@ -287,48 +287,38 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
   const [data, setData] = useState<any>(null);
   const lastRequest = useRef<string>('');
 
-  const doRequest = useCallback((client: HttpClient, route: string, body?: any, headers?: any) => {
-    return new Promise((resolve, reject) => {
-      setLoading(true);
-      client.request(route, body, headers)
-      .then((data) => {
-        setError(null);
-        setData(data);
-        resolve(data);
-      })
-      .catch((error) => {
-        setData(null);
-        setError(error);
-        reject(error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-    });
-  }, []);
+  const request = useCallback(async () => {
+    if (!client) throw new Error('Missing BLEST client in context');
+    setLoading(true);
+    try {
+      const headers = makeBlestHeaders(safeOptions);
+      const result = await client.request(route, safeBody, headers);
+      setError(null);
+      setData(result);
+      return data;
+    } catch (error) {
+      setData(null);
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [client, route, safeBody, safeOptions]);
 
   useEffect(() => {
     if (safeOptions?.skip) return;
     const requestHash = route + JSON.stringify(safeBody);
     if (!lastRequest.current || lastRequest.current !== requestHash) {
       lastRequest.current = requestHash;
-      if (!client) throw new Error('Missing BLEST client in context');
-      const headers = makeBlestHeaders(safeOptions);
-      doRequest(client, route, safeBody, headers).catch(console.error);
+      request().catch(console.error);
     }
-  }, [client, route, safeBody, safeOptions]);
-
-  const refresh = useCallback(() => {
-    if (!client) throw new Error('Missing BLEST client in context');
-    const headers = makeBlestHeaders(safeOptions);
-    return doRequest(client, route, safeBody, headers);
   }, [client, route, safeBody, safeOptions]);
 
   return {
     loading,
     error,
     data,
-    refresh
+    refresh: request
   }
 
 }
@@ -341,34 +331,31 @@ export const useBlestLazyRequest = (route: string, options?: BlestLazyRequestOpt
   const [error, setError] = useState<any>(null);
   const [data, setData] = useState<any>(null);
 
-  const doRequest = useCallback((client: HttpClient, route: string, body?: any, headers?: any) => {
-    return new Promise((resolve, reject) => {
-      setLoading(true);
-      client.request(route, body, headers)
-      .then((data) => {
-        setError(null);
-        setData(data);
-        resolve(data);
-      })
-      .catch((error) => {
-        setData(null);
-        setError(error);
-        reject(error);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-    });
-  }, []);
-
-  const request = useCallback((body?: any) => {
+  const request = useCallback(async (body?: any) => {
     if (!client) throw new Error('Missing BLEST client in context');
-    const headers = makeBlestHeaders(safeOptions);
-    return doRequest(client, route, body, headers);
-  }, [client, route]);
+    setLoading(true);
+    try {
+      const headers = makeBlestHeaders(safeOptions);
+      const result = await client.request(route, body, headers);
+      setError(null);
+      setData(result);
+      return data;
+    } catch (error) {
+      setData(null);
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [client, route, safeOptions]);
 
   return [request, { loading, error, data }];
 
+}
+
+export const useBlest = () => {
+  const { client } = useContext(BlestContext);
+  return { request: client?.request };
 }
 
 export const useRequest = useBlestRequest;

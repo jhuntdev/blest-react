@@ -59,7 +59,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useLazyRequest = exports.useRequest = exports.useBlestLazyRequest = exports.useBlestRequest = exports.BlestProvider = exports.EventEmitter = void 0;
+exports.useLazyRequest = exports.useRequest = exports.useBlest = exports.useBlestLazyRequest = exports.useBlestRequest = exports.BlestProvider = exports.EventEmitter = void 0;
 var react_1 = require("react");
 var isEqual_1 = __importDefault(require("lodash/isEqual"));
 var idGenerator = function (length) {
@@ -164,7 +164,7 @@ var HttpClient = /** @class */ (function () {
                         case 0:
                             skipEmit = false;
                             if (!(!isRetry && this.errorHandler)) return [3 /*break*/, 2];
-                            return [4 /*yield*/, Promise.resolve(this.errorHandler(error, queue, function () {
+                            return [4 /*yield*/, Promise.resolve(this.errorHandler(error, function () {
                                     skipEmit = true;
                                     _this.retry(queue);
                                 })).catch(console.error)];
@@ -338,48 +338,50 @@ var useBlestRequest = function (route, body, options) {
     var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
     var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
     var lastRequest = (0, react_1.useRef)('');
-    var doRequest = (0, react_1.useCallback)(function (client, route, body, headers) {
-        return new Promise(function (resolve, reject) {
-            setLoading(true);
-            client.request(route, body, headers)
-                .then(function (data) {
-                setError(null);
-                setData(data);
-                resolve(data);
-            })
-                .catch(function (error) {
-                setData(null);
-                setError(error);
-                reject(error);
-            })
-                .finally(function () {
-                setLoading(false);
-            });
+    var request = (0, react_1.useCallback)(function () { return __awaiter(void 0, void 0, void 0, function () {
+        var headers, result, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!client)
+                        throw new Error('Missing BLEST client in context');
+                    setLoading(true);
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, 4, 5]);
+                    headers = makeBlestHeaders(safeOptions);
+                    return [4 /*yield*/, client.request(route, safeBody, headers)];
+                case 2:
+                    result = _a.sent();
+                    setError(null);
+                    setData(result);
+                    return [2 /*return*/, data];
+                case 3:
+                    error_1 = _a.sent();
+                    setData(null);
+                    setError(error_1);
+                    throw error_1;
+                case 4:
+                    setLoading(false);
+                    return [7 /*endfinally*/];
+                case 5: return [2 /*return*/];
+            }
         });
-    }, []);
+    }); }, [client, route, safeBody, safeOptions]);
     (0, react_1.useEffect)(function () {
         if (safeOptions === null || safeOptions === void 0 ? void 0 : safeOptions.skip)
             return;
         var requestHash = route + JSON.stringify(safeBody);
         if (!lastRequest.current || lastRequest.current !== requestHash) {
             lastRequest.current = requestHash;
-            if (!client)
-                throw new Error('Missing BLEST client in context');
-            var headers = makeBlestHeaders(safeOptions);
-            doRequest(client, route, safeBody, headers).catch(console.error);
+            request().catch(console.error);
         }
-    }, [client, route, safeBody, safeOptions]);
-    var refresh = (0, react_1.useCallback)(function () {
-        if (!client)
-            throw new Error('Missing BLEST client in context');
-        var headers = makeBlestHeaders(safeOptions);
-        return doRequest(client, route, safeBody, headers);
     }, [client, route, safeBody, safeOptions]);
     return {
         loading: loading,
         error: error,
         data: data,
-        refresh: refresh
+        refresh: request
     };
 };
 exports.useBlestRequest = useBlestRequest;
@@ -389,34 +391,44 @@ var useBlestLazyRequest = function (route, options) {
     var _a = (0, react_1.useState)(false), loading = _a[0], setLoading = _a[1];
     var _b = (0, react_1.useState)(null), error = _b[0], setError = _b[1];
     var _c = (0, react_1.useState)(null), data = _c[0], setData = _c[1];
-    var doRequest = (0, react_1.useCallback)(function (client, route, body, headers) {
-        return new Promise(function (resolve, reject) {
-            setLoading(true);
-            client.request(route, body, headers)
-                .then(function (data) {
-                setError(null);
-                setData(data);
-                resolve(data);
-            })
-                .catch(function (error) {
-                setData(null);
-                setError(error);
-                reject(error);
-            })
-                .finally(function () {
-                setLoading(false);
-            });
+    var request = (0, react_1.useCallback)(function (body) { return __awaiter(void 0, void 0, void 0, function () {
+        var headers, result, error_2;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!client)
+                        throw new Error('Missing BLEST client in context');
+                    setLoading(true);
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, 4, 5]);
+                    headers = makeBlestHeaders(safeOptions);
+                    return [4 /*yield*/, client.request(route, body, headers)];
+                case 2:
+                    result = _a.sent();
+                    setError(null);
+                    setData(result);
+                    return [2 /*return*/, data];
+                case 3:
+                    error_2 = _a.sent();
+                    setData(null);
+                    setError(error_2);
+                    throw error_2;
+                case 4:
+                    setLoading(false);
+                    return [7 /*endfinally*/];
+                case 5: return [2 /*return*/];
+            }
         });
-    }, []);
-    var request = (0, react_1.useCallback)(function (body) {
-        if (!client)
-            throw new Error('Missing BLEST client in context');
-        var headers = makeBlestHeaders(safeOptions);
-        return doRequest(client, route, body, headers);
-    }, [client, route]);
+    }); }, [client, route, safeOptions]);
     return [request, { loading: loading, error: error, data: data }];
 };
 exports.useBlestLazyRequest = useBlestLazyRequest;
+var useBlest = function () {
+    var client = (0, react_1.useContext)(BlestContext).client;
+    return { request: client === null || client === void 0 ? void 0 : client.request };
+};
+exports.useBlest = useBlest;
 exports.useRequest = exports.useBlestRequest;
 exports.useLazyRequest = exports.useBlestLazyRequest;
 var useDeepMemo = function (value) {

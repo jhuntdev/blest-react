@@ -12,7 +12,7 @@ export interface BlestProviderOptions {
     httpHeaders?: {
         [key: string]: any;
     };
-    errorHandler?: (error: any, queue: any[][], retry: () => void) => any;
+    errorHandler?: (error: any, retry: () => void) => any;
     idGenerator?: () => string;
 }
 export type BlestSelector = Array<string | BlestSelector>;
@@ -62,6 +62,9 @@ interface BlestRequestHookReturn extends BlestRequestState {
 }
 export declare const useBlestRequest: (route: string, body?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;
 export declare const useBlestLazyRequest: (route: string, options?: BlestLazyRequestOptions) => [(body?: any) => Promise<any>, BlestRequestState];
+export declare const useBlest: () => {
+    request: ((route: string, body: object | null, headers: object | null) => Promise<unknown>) | undefined;
+};
 export declare const useRequest: (route: string, body?: any, options?: BlestRequestOptions) => BlestRequestHookReturn;
 export declare const useLazyRequest: (route: string, options?: BlestLazyRequestOptions) => [(body?: any) => Promise<any>, BlestRequestState];
 export {};
