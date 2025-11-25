@@ -348,23 +348,22 @@ var useBlestRequest = function (route, body, options) {
                     setLoading(true);
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 3, 4, 5]);
+                    _a.trys.push([1, 3, , 4]);
                     headers = makeBlestHeaders(safeOptions);
                     return [4 /*yield*/, client.request(route, safeBody, headers)];
                 case 2:
                     result = _a.sent();
                     setError(null);
                     setData(result);
+                    setLoading(false);
                     return [2 /*return*/, data];
                 case 3:
                     error_1 = _a.sent();
                     setData(null);
                     setError(error_1);
-                    throw error_1;
-                case 4:
                     setLoading(false);
-                    return [7 /*endfinally*/];
-                case 5: return [2 /*return*/];
+                    throw error_1;
+                case 4: return [2 /*return*/];
             }
         });
     }); }, [client, route, safeBody, safeOptions]);
@@ -401,23 +400,22 @@ var useBlestLazyRequest = function (route, options) {
                     setLoading(true);
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 3, 4, 5]);
+                    _a.trys.push([1, 3, , 4]);
                     headers = makeBlestHeaders(safeOptions);
                     return [4 /*yield*/, client.request(route, body, headers)];
                 case 2:
                     result = _a.sent();
                     setError(null);
                     setData(result);
+                    setLoading(false);
                     return [2 /*return*/, data];
                 case 3:
                     error_2 = _a.sent();
                     setData(null);
                     setError(error_2);
-                    throw error_2;
-                case 4:
                     setLoading(false);
-                    return [7 /*endfinally*/];
-                case 5: return [2 /*return*/];
+                    throw error_2;
+                case 4: return [2 /*return*/];
             }
         });
     }); }, [client, route, safeOptions]);

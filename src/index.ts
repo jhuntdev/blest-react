@@ -295,13 +295,13 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
       const result = await client.request(route, safeBody, headers);
       setError(null);
       setData(result);
+      setLoading(false);
       return data;
     } catch (error) {
       setData(null);
       setError(error);
-      throw error;
-    } finally {
       setLoading(false);
+      throw error;
     }
   }, [client, route, safeBody, safeOptions]);
 
@@ -339,13 +339,13 @@ export const useBlestLazyRequest = (route: string, options?: BlestLazyRequestOpt
       const result = await client.request(route, body, headers);
       setError(null);
       setData(result);
+      setLoading(false);
       return data;
     } catch (error) {
       setData(null);
       setError(error);
-      throw error;
-    } finally {
       setLoading(false);
+      throw error;
     }
   }, [client, route, safeOptions]);
 
