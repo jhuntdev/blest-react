@@ -296,7 +296,7 @@ export const useBlestRequest = (route: string, body?: any, options?: BlestReques
       setError(null);
       setData(result);
       setLoading(false);
-      return data;
+      return result;
     } catch (error) {
       setData(null);
       setError(error);
@@ -340,7 +340,7 @@ export const useBlestLazyRequest = (route: string, options?: BlestLazyRequestOpt
       setError(null);
       setData(result);
       setLoading(false);
-      return data;
+      return result;
     } catch (error) {
       setData(null);
       setError(error);
@@ -363,10 +363,8 @@ export const useLazyRequest = useBlestLazyRequest;
 
 const useDeepMemo = (value: any): any => {
   const [safeValue, setSafeValue] = useState();
-
   if (!isEqual(value, safeValue)) {
     setSafeValue(value);
   }
-
   return safeValue;
 }

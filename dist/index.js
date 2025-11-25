@@ -356,7 +356,7 @@ var useBlestRequest = function (route, body, options) {
                     setError(null);
                     setData(result);
                     setLoading(false);
-                    return [2 /*return*/, data];
+                    return [2 /*return*/, result];
                 case 3:
                     error_1 = _a.sent();
                     setData(null);
@@ -408,7 +408,7 @@ var useBlestLazyRequest = function (route, options) {
                     setError(null);
                     setData(result);
                     setLoading(false);
-                    return [2 /*return*/, data];
+                    return [2 /*return*/, result];
                 case 3:
                     error_2 = _a.sent();
                     setData(null);
